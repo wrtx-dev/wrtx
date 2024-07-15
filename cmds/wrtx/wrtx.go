@@ -1,12 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	_ "wrtx/internal/init"
+
+	_ "embed"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
+
+var WrtxVersion string
 
 type pidMsg struct {
 	ChildPID      int `json:"childpid"`
@@ -18,7 +23,7 @@ const stdioCount = 3
 func main() {
 	app := cli.App{
 		Name:  "wrtx",
-		Usage: "namespace example",
+		Usage: fmt.Sprintf("simple to run openwrtx in namespace, version: %s", WrtxVersion),
 		Commands: []*cli.Command{
 			&runcmd,
 			// {
@@ -29,6 +34,9 @@ func main() {
 
 			// 	},
 			// },
+			&importCmd,
+			&execCmd,
+			&shellCmd,
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

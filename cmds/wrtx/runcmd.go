@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"wrtx/internal/config"
 	"wrtx/package/network"
 	"wrtx/package/simplecgroup"
 	cgroupv2 "wrtx/package/simplecgroup/v2"
@@ -31,13 +32,33 @@ var runcmd = cli.Command{
 }
 
 func runWrt(ctx *cli.Context) error {
+	conf := config.NewConf()
+	confLoaded := true
+	if err := conf.Load("/usr/local/wrtx/conf/conf.json"); err != nil {
+		confLoaded = false
+	}
+
 	cmd := exec.Command("/proc/self/exe", "init")
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	phy := ctx.String("phy")
 	netDevName := ctx.String("ethname")
-	rootDir := "/usr/local/wrtx/image/test"
+	var rootDir string
+	if conf.RootDir == "" {
+		rootDir = config.DefaultImagePath
+	} else {
+		rootDir = conf.RootDir
+	}
+
+	if confLoaded {
+		if len(conf.PhyDevName) > 0 && phy == "" {
+			phy = conf.PhyDevName
+		}
+		if len(conf.NetDevName) > 0 && netDevName == "" {
+			netDevName = conf.NetDevName
+		}
+	}
 	if phy == "" {
 		phy = "veth_wrtx"
 	}
