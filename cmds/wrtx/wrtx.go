@@ -37,8 +37,10 @@ func main() {
 			&importCmd,
 			&execCmd,
 			&shellCmd,
+			&stopCmd,
 		},
 	}
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
 	}

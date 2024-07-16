@@ -16,6 +16,8 @@ const (
 	DefaultInstancePath = baseWrtxPath + "/instances"
 	DefaultRootPath     = DefaultImagePath + "/openwrt"
 	DefaultImageName    = "openwrt"
+	DefaultRunDir       = baseWrtxPath + "/run"
+	DefaultWrtxRunPidFile = DefaultRunDir + "/pid"
 )
 
 type WrtxConfig struct {

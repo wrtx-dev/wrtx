@@ -14,6 +14,7 @@ import (
 	cgroupv2 "wrtx/package/simplecgroup/v2"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -88,9 +89,7 @@ func runWrt(ctx *cli.Context) error {
 		return errors.WithMessage(err, "mount rootfs error")
 	}
 	cmd := exec.Command("/proc/self/exe", "init")
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
+
 	phy := ctx.String("phy")
 	netDevName := ctx.String("ethname")
 
@@ -111,27 +110,9 @@ func runWrt(ctx *cli.Context) error {
 		netDevName = "wrtx_veth"
 	}
 
-	r, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
+	r, _, cw, err := NewProcess(cmd, rootDir)
 	if err != nil {
-		return fmt.Errorf("create init pipe error: %v", err)
-	}
-	cr, cw, err := os.Pipe()
-	if err != nil {
-		return fmt.Errorf("create ctrl pipe error: %v", err)
-	}
-	cmd.ExtraFiles = append(cmd.ExtraFiles, os.NewFile(uintptr(r[1]), "init_pipe"))
-
-	cmd.Env = []string{fmt.Sprintf("_INIT_PIPE=%d", stdioCount+len(cmd.ExtraFiles)-1)}
-
-	cmd.ExtraFiles = append(cmd.ExtraFiles, cr)
-	cmd.Env = append(cmd.Env, fmt.Sprintf("_CTRL_PIPE=%d", stdioCount+len(cmd.ExtraFiles)-1))
-
-	cmd.Env = append(cmd.Env, fmt.Sprintf("_ROOTDIR=%s", rootDir))
-	fmt.Println("cmd's env: ", cmd.Env)
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start cmd err: %s", err)
-	} else {
-		fmt.Println("create new proc's pid:", cmd.Process.Pid)
+		return fmt.Errorf("create new process error")
 	}
 	cg, err := simplecgroup.GetCgroupType()
 	fmt.Println("cgroup type:", cg)
@@ -188,8 +169,25 @@ func runWrt(ctx *cli.Context) error {
 		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
 		return err
 	}
+	nsPath := fmt.Sprintf("/proc/%d/ns/", jsMsg.GrandChildPid)
+	files, err := os.ReadDir(nsPath)
+	if err != nil {
+		logrus.Errorf("read path: %s error: %v", nsPath, err)
+	}
+	for _, finfo := range files {
+		if !finfo.IsDir() {
+			info, err := finfo.Info()
+			if err != nil {
+				logrus.Errorf("read file info error: %v", err)
+			}
+			os.Symlink(fmt.Sprintf("%s/%s", nsPath, info.Name()), fmt.Sprintf("%s/%s", config.DefaultInstancePath, info.Name()))
 
+		}
+	}
 	cw.Write([]byte("continue"))
+	savePidToFile(jsMsg.GrandChildPid, fmt.Sprintf("%s/pid", config.DefaultRunDir))
+	conf.PhyDevName = phy
+	conf.NetDevName = netDevName
 	conf.Dumps(config.DefaultConfPath)
 	return nil
 }
@@ -211,4 +209,45 @@ func mountRootfs(conf config.WrtxConfig) error {
 		}
 	}
 	return fsMount.MountOverlayFs(conf.WorkDir, conf.UpperDir, conf.RootDir, conf.MergeDir)
+}
+
+func NewProcess(cmd *exec.Cmd, rootDir string) ([2]int, *os.File, *os.File, error) {
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	r, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		return [2]int{0}, nil, nil, fmt.Errorf("create init pipe error: %v", err)
+	}
+	cr, cw, err := os.Pipe()
+	if err != nil {
+		return r, nil, nil, fmt.Errorf("create ctrl pipe error: %v", err)
+	}
+	cmd.ExtraFiles = append(cmd.ExtraFiles, os.NewFile(uintptr(r[1]), "init_pipe"))
+
+	cmd.Env = []string{fmt.Sprintf("_INIT_PIPE=%d", stdioCount+len(cmd.ExtraFiles)-1)}
+
+	cmd.ExtraFiles = append(cmd.ExtraFiles, cr)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("_CTRL_PIPE=%d", stdioCount+len(cmd.ExtraFiles)-1))
+
+	cmd.Env = append(cmd.Env, fmt.Sprintf("_ROOTDIR=%s", rootDir))
+	fmt.Println("cmd's env: ", cmd.Env)
+	if err := cmd.Start(); err != nil {
+		return r, cr, cw, fmt.Errorf("start cmd err: %s", err)
+	} else {
+		fmt.Println("create new proc's pid:", cmd.Process.Pid)
+	}
+	return r, cr, cw, nil
+}
+
+func savePidToFile(pid int, file string) error {
+	if _, err := os.Stat(file); err != nil && os.IsNotExist(err) {
+		fp, err := os.OpenFile(file, os.O_CREATE|os.O_RDWR, os.ModePerm)
+		if err != nil {
+			return errors.WithMessagef(err, "create file: %s error", file)
+		}
+		pidStr := fmt.Sprintf("%d", pid)
+		fp.Write([]byte(pidStr))
+	}
+	return fmt.Errorf("create pid file err")
 }
