@@ -8,10 +8,12 @@ import (
 	"os/exec"
 	"syscall"
 	"wrtx/internal/config"
+	fsMount "wrtx/package/mount"
 	"wrtx/package/network"
 	"wrtx/package/simplecgroup"
 	cgroupv2 "wrtx/package/simplecgroup/v2"
 
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -27,6 +29,18 @@ var runcmd = cli.Command{
 			Name:  "ethname",
 			Usage: "new eth dev name",
 		},
+		&cli.StringFlag{
+			Name:  "conf",
+			Usage: "conf file's path, default: " + config.DefaultConfPath,
+		},
+		&cli.StringFlag{
+			Name:  "nictype",
+			Usage: "virtual nic dev's type, Only Support: ipvlan macvlan eg.: ipvlan",
+		},
+		&cli.StringFlag{
+			Name:  "image",
+			Usage: "image name which will run",
+		},
 	},
 	Action: runWrt,
 }
@@ -34,22 +48,53 @@ var runcmd = cli.Command{
 func runWrt(ctx *cli.Context) error {
 	conf := config.NewConf()
 	confLoaded := true
-	if err := conf.Load("/usr/local/wrtx/conf/conf.json"); err != nil {
+	wrtxConfPath := ctx.String("conf")
+	imgName := ctx.String("image")
+	if imgName == "" {
+		imgName = config.DefaultImageName
+	}
+	if wrtxConfPath == "" {
+		wrtxConfPath = config.DefaultConfPath
+	}
+	if err := conf.Load(wrtxConfPath); err != nil {
 		confLoaded = false
 	}
 
+	workDir := conf.WorkDir
+	if workDir == "" {
+		workDir = config.DefaultInstancePath + "/workDir"
+		conf.WorkDir = workDir
+	}
+
+	upperDir := conf.UpperDir
+	if upperDir == "" {
+		upperDir = config.DefaultInstancePath + "/upperDir"
+		conf.UpperDir = upperDir
+	}
+
+	mergeDir := conf.MergeDir
+	if mergeDir == "" {
+		mergeDir = config.DefaultInstancePath + "/mergeDir"
+		conf.MergeDir = mergeDir
+	}
+	if conf.RootDir == "" {
+		if imgName != "" {
+			conf.RootDir = config.DefaultImagePath + "/" + imgName
+		} else {
+			conf.RootDir = config.DefaultRootPath
+		}
+	}
+	if err := mountRootfs(*conf); err != nil {
+		return errors.WithMessage(err, "mount rootfs error")
+	}
 	cmd := exec.Command("/proc/self/exe", "init")
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	phy := ctx.String("phy")
 	netDevName := ctx.String("ethname")
-	var rootDir string
-	if conf.RootDir == "" {
-		rootDir = config.DefaultImagePath
-	} else {
-		rootDir = conf.RootDir
-	}
+
+	rootDir := conf.MergeDir
 
 	if confLoaded {
 		if len(conf.PhyDevName) > 0 && phy == "" {
@@ -60,10 +105,10 @@ func runWrt(ctx *cli.Context) error {
 		}
 	}
 	if phy == "" {
-		phy = "veth_wrtx"
+		phy = "eth0"
 	}
 	if netDevName == "" {
-		netDevName = "eth0"
+		netDevName = "wrtx_veth"
 	}
 
 	r, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
@@ -145,5 +190,25 @@ func runWrt(ctx *cli.Context) error {
 	}
 
 	cw.Write([]byte("continue"))
+	conf.Dumps(config.DefaultConfPath)
 	return nil
+}
+
+func mountRootfs(conf config.WrtxConfig) error {
+	var wrtxPaths = [...]string{conf.WorkDir, conf.UpperDir, conf.MergeDir}
+	for _, wrtxPath := range wrtxPaths {
+		if stat, err := os.Stat(wrtxPath); err != nil {
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("check path: %s error: %v", wrtxPath, err)
+			}
+			if err = os.MkdirAll(wrtxPath, os.ModePerm); err != nil {
+				return errors.WithMessagef(err, "create dir %s error", wrtxPath)
+			}
+		} else {
+			if !stat.IsDir() {
+				return fmt.Errorf("check path: %s exist, but it's not a dir", wrtxPath)
+			}
+		}
+	}
+	return fsMount.MountOverlayFs(conf.WorkDir, conf.UpperDir, conf.RootDir, conf.MergeDir)
 }

@@ -1,15 +1,17 @@
-all: wrtx
+all: wrtx wrtxproxy
 
 version=$(shell cat VERSION)
-src_file=$(vpath %.go ./)
-wrtx: ${src_file}
-	@echo ${src_file}
+
+wrtxproxy:
+	@GOARCH=386 go build -C cmds/wrtxproxy -ldflags '-extldflags "-static"'
+	@mv cmds/wrtxproxy/wrtxproxy ./
+wrtx: $(wildcard *.go)
 	@go build -C cmds/wrtx -ldflags "-X main.WrtxVersion=${version}"
 	@mv cmds/wrtx/wrtx ./
 
 clean:
-	@rm -rvf wrtx
-	@test -d build && rm -rvf build
+	@rm -rvf wrtx wrtxproxy
+	@rm -rvf build
 
 modupdate:
 	go mod tidy

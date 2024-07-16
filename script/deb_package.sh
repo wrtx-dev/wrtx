@@ -7,6 +7,14 @@ wrtx_debian_dir="${wrtx_base_dir}/DEBIAN"
 wrtx_root="${wrtx_base_dir}${install_dir}"
 # wrtx_conf_dir="${wrtx_root}/conf"
 wrtx_bin_dir="${wrtx_root}/bin"
+wrtx_arch=$(uname -p)
+if [ ${wrtx_arch} = "x86_64" ]
+then
+    cpu_arch="amd64"
+else
+    cpu_arch=${wrtx_arch}
+fi
+echo "wrtx_arch ${wrtx_arch}"
 
 version="unknown"
 if [ ${1}"ttt" != "ttt" ]
@@ -14,7 +22,7 @@ then
     version=${1}
 fi
 
-wrtx_dirs=("bin" "conf" "images" "run" "instancs")
+wrtx_dirs=("bin" "conf" "images" "run" "instances")
 
 mk_deb_dir() {
     test -d ${wrtx_base_dir} && rm -rvf ${wrtx_base_dir}
@@ -53,7 +61,7 @@ mkdir ${wrtx_debian_dir}
 cat >>${wrtx_debian_dir}/control<<EOF
 Package: wrtX
 Version: ${version}
-Architecture: amd64
+Architecture: ${cpu_arch}
 Maintainer: wrtX.dev <wrtx.dev@outlook.com>
 Installed-Size:
 Pre-Depends:
@@ -70,4 +78,4 @@ EOF
 
 copy_files
 
-dpkg -b ${wrtx_base_dir} wrtx-${version}.deb
+dpkg -b ${wrtx_base_dir} wrtx-${wrtx_arch}-${version}.deb

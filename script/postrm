@@ -1,2 +1,6 @@
 #!/bin/sh
 unlink /bin/wrtx
+if [ -d /usr/local/wrtx ]
+then
+    rm -rf /usr/local/wrtx
+fi
