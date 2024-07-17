@@ -8,24 +8,13 @@ import (
 )
 
 var shellCmd = cli.Command{
-	Name:  "shell",
-	Usage: "run openwrt shell,default:/bin/sh",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "sh",
-			Usage: "path of shell's bin",
-		},
-	},
+	Name:   "shell",
+	Usage:  "run openwrt shell, /bin/ash --login",
 	Action: shellAction,
 }
 
 func shellAction(ctx *cli.Context) error {
-	shell := ctx.String("sh")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
-
-	cmd := exec.Command("/proc/self/exe", shell)
+	cmd := exec.Command("/proc/self/exe", []string{"exec", "/bin/ash", "--login"}...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
