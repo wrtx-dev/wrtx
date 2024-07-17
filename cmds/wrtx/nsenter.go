@@ -12,7 +12,7 @@ package main
 #include <fcntl.h>
 #include <sys/wait.h>
 
-#define _DEBUG
+// #define _DEBUG
 #ifdef _DEBUG
 #define DEBUG(...) printf(__VA_ARGS__)
 #else
@@ -139,7 +139,7 @@ void __attribute__((constructor)) nsenter() {
 	ssize_t rc = 0;
 
 	for(i = 0; i < list_len; i++) {
-		printf("fds[%d]=%d\n",i, fds[i]);
+		fds[i] = -1;
 	}
 
 	ns_list = getenv("NSLIST");
@@ -190,7 +190,7 @@ void __attribute__((constructor)) nsenter() {
 
 
 	for(i = 0; i < list_len; i++) {
-		if(fds[i] < 1) {
+		if(fds[i] < 0) {
 			continue;
 		}
 		DEBUG("try to set ns: %s\n", ns_char_list[i]);

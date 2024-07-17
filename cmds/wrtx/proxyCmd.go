@@ -55,7 +55,6 @@ func proxyAction(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("listen on %s error: %v", addr, err)
 		}
-		fmt.Println(os.Args[1:])
 		cmd := exec.Command("/proc/self/exe", os.Args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
@@ -68,27 +67,24 @@ func proxyAction(ctx *cli.Context) error {
 		}
 		cmd.Env = []string{fmt.Sprintf("NSPID=%d", pid)}
 		cmd.Env = append(cmd.Env, fmt.Sprintf("NSLIST=%d", syscall.CLONE_NEWNET))
-		fmt.Println("run cmd")
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("run proxy error: %v", err)
 		}
 
 	} else {
-		fmt.Println("into tcp")
 		tcpFP := os.NewFile(uintptr(3), "tcplistener")
 		l, err := net.FileListener(tcpFP)
 		if err != nil {
 			return fmt.Errorf("recover tcp listener error: %v", err)
 		}
 
+		fmt.Printf("listen: %s,PRESS CTRL+C to stop it!!!\n", l.Addr().String())
 		for {
 			tcpListener := l.(*net.TCPListener)
-			fmt.Println("waiting for connect")
 			conn, err := tcpListener.Accept()
 			if err != nil {
 				fmt.Println("accept error:", err)
 			}
-			fmt.Println("get conn, addr:", conn.RemoteAddr())
 			go func(c *net.Conn) {
 				ctrl := make(chan bool)
 				defer close(ctrl)
