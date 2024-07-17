@@ -2,3 +2,4 @@ vendor/
 /wrtx
 /wrtxproxy
 build
+.vscode/launch.json

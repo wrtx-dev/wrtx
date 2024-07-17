@@ -12,7 +12,7 @@ package main
 #include <fcntl.h>
 #include <sys/wait.h>
 
-// #define _DEBUG
+#define _DEBUG
 #ifdef _DEBUG
 #define DEBUG(...) printf(__VA_ARGS__)
 #else
@@ -125,6 +125,7 @@ int ns_set_env(char *env_buf, ssize_t rc) {
 }
 
 void __attribute__((constructor)) nsenter() {
+	DEBUG("into nsenter\n");
 	char *ns_list = NULL, *pid, *env_buf;
 	int ns_enum_list[] = {CLONE_NEWIPC , CLONE_NEWNET , CLONE_NEWPID , CLONE_NEWUTS , CLONE_NEWCGROUP, CLONE_NEWNS};
 
@@ -136,6 +137,10 @@ void __attribute__((constructor)) nsenter() {
 	char nspath[2048];
 	pid_t spid;
 	ssize_t rc = 0;
+
+	for(i = 0; i < list_len; i++) {
+		printf("fds[%d]=%d\n",i, fds[i]);
+	}
 
 	ns_list = getenv("NSLIST");
 	if (!ns_list) {
@@ -185,6 +190,10 @@ void __attribute__((constructor)) nsenter() {
 
 
 	for(i = 0; i < list_len; i++) {
+		if(fds[i] < 1) {
+			continue;
+		}
+		DEBUG("try to set ns: %s\n", ns_char_list[i]);
 		if (setns(fds[i], ns_enum_list[i]) < 0) {
 			printf("setns %s failed\n", ns_char_list[i]);
 			exit(-1);

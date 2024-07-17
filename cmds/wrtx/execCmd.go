@@ -46,7 +46,7 @@ func execAction(ctx *cli.Context) error {
 
 		fp, err := os.Open(fmt.Sprintf("/proc/%d/environ", pid))
 		if err != nil {
-			return fmt.Errorf("open environ file: %s error: %v", fmt.Sprintf("/proc/%d/environ"), err)
+			return fmt.Errorf("open environ file: %s error: %v", fmt.Sprintf("/proc/%d/environ", pid), err)
 		}
 		defer fp.Close()
 

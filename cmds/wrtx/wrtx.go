@@ -38,6 +38,7 @@ func main() {
 			&execCmd,
 			&shellCmd,
 			&stopCmd,
+			&proxyCmd,
 		},
 	}
 	logrus.SetFormatter(&logrus.JSONFormatter{})
