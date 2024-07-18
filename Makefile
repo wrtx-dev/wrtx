@@ -2,8 +2,9 @@ all: wrtx
 
 version=$(shell cat VERSION)
 
+PACKAGES=$(shell find package -type f -name '*.go')
 
-wrtx: $(wildcard *.go)
+wrtx: $(wildcard cmds/wrtx/*.go) $(PACKAGES)
 	@go build -C cmds/wrtx -ldflags "-X main.WrtxVersion=${version}"
 	@mv cmds/wrtx/wrtx ./
 
