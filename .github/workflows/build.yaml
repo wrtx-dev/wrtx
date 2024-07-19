@@ -23,4 +23,4 @@ jobs:
         if: steps.build.outputs.status == 'success' && !cancelled()
         with:
           name: ${{ env.DEB_NAME }}
-          path: build/${{ env.DEB_NAME }}.deb
+          path: build/${{ env.DEB_NAME }}
