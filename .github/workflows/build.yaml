@@ -16,7 +16,7 @@ jobs:
 
       - name: build deb package
         id: build 
-        run: make deb && echo "status=success" >>$GITHUB_OUTPUT && echo "DEB_NAME=$(ls build/*.deb|xargs basename)" >>$GITHUB_ENV
+        run: make modupdate && make deb && echo "status=success" >>$GITHUB_OUTPUT && echo "DEB_NAME=$(ls build/*.deb|xargs basename)" >>$GITHUB_ENV
 
       - name: artifact
         uses: actions/upload-artifact@v4
