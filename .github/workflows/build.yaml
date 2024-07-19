@@ -15,4 +15,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: build deb package
-        run: make deb
+        id: build 
+        run: make deb && echo "status=success" >>$GITHUB_OUPUT
+
+      - name: artifact
+        if: steps.build.outputs.status == 'success' && !cancelled()
+        with:
+          name: deb
+          path: build/*.deb
