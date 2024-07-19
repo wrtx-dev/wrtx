@@ -19,6 +19,7 @@ jobs:
         run: make deb && echo "status=success" >>$GITHUB_OUPUT
 
       - name: artifact
+        uses: actions/upload-artifact@v4
         if: steps.build.outputs.status == 'success' && !cancelled()
         with:
           name: deb
