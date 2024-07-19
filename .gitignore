@@ -3,3 +3,4 @@ vendor/
 /wrtxproxy
 build
 .vscode/launch.json
+go.sum
