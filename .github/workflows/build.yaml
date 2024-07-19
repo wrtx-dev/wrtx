@@ -16,7 +16,7 @@ jobs:
 
       - name: build deb package
         id: build 
-        run: make deb && echo "status=success" >>$GITHUB_OUPUT
+        run: make deb && echo "status=success" >>$GITHUB_OUTPUT
 
       - name: artifact
         uses: actions/upload-artifact@v4
