@@ -16,11 +16,11 @@ jobs:
 
       - name: build deb package
         id: build 
-        run: make deb && echo "status=success" >>$GITHUB_OUTPUT
+        run: make deb && echo "status=success" >>$GITHUB_OUTPUT && echo "DEB_NAME=$(build/*.deb|xargs basename)" >>$GITHUB_ENV
 
       - name: artifact
         uses: actions/upload-artifact@v4
         if: steps.build.outputs.status == 'success' && !cancelled()
         with:
-          name: deb
-          path: build/*.deb
+          name: ${{ env.DEB_NAME }}
+          path: build/${{ env.DEB_NAME }}.deb
