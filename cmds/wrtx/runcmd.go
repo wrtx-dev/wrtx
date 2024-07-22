@@ -36,7 +36,7 @@ var runcmd = cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "nictype",
-			Usage: "virtual nic dev's type, Only Support: ipvlan macvlan eg.: ipvlan",
+			Usage: "virtual nic dev's type, Only Support: ipvlan macvlan, default macvla, eg.: ipvlan",
 		},
 		&cli.StringFlag{
 			Name:  "image",
@@ -51,6 +51,7 @@ func runWrt(ctx *cli.Context) error {
 	confLoaded := true
 	wrtxConfPath := ctx.String("conf")
 	imgName := ctx.String("image")
+	nictype := ctx.String("nictype")
 	if imgName == "" {
 		imgName = config.DefaultImageName
 	}
@@ -59,6 +60,9 @@ func runWrt(ctx *cli.Context) error {
 	}
 	if err := conf.Load(wrtxConfPath); err != nil {
 		confLoaded = false
+	}
+	if nictype == "" {
+		nictype = "macvlan"
 	}
 
 	workDir := conf.WorkDir
@@ -159,10 +163,18 @@ func runWrt(ctx *cli.Context) error {
 		return fmt.Errorf("wait error: %v", err)
 	}
 	fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
-	_, err = network.NewIPvlanDev(netDevName, phy)
-	if err != nil {
-		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
-		return err
+	if nictype == "ipvlan" {
+		_, err = network.NewIPvlanDev(netDevName, phy)
+		if err != nil {
+			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
+			return err
+		}
+	} else if nictype == "macvlan" {
+		_, err = network.NewIPvlanDev(netDevName, phy)
+		if err != nil {
+			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
+			return err
+		}
 	}
 	err = network.AddDevToNamespaceByPID(netDevName, phy, jsMsg.GrandChildPid)
 	if err != nil {
