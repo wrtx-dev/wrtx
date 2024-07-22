@@ -126,7 +126,7 @@ int ns_set_env(char *env_buf, ssize_t rc) {
 
 void __attribute__((constructor)) nsenter() {
 	DEBUG("into nsenter\n");
-	char *ns_list = NULL, *pid, *env_buf;
+	char *ns_list = NULL, *pid, *env_buf, *nsdir;
 	int ns_enum_list[] = {CLONE_NEWIPC , CLONE_NEWNET , CLONE_NEWPID , CLONE_NEWUTS , CLONE_NEWCGROUP, CLONE_NEWNS};
 
 	char *ns_char_list[] = {"ipc", "net", "pid", "uts", "cgroup", "mnt"};
@@ -134,7 +134,8 @@ void __attribute__((constructor)) nsenter() {
 	int ns_args = 0;
 	int list_len = (int)(sizeof(ns_enum_list)/sizeof(int));
 	int i;
-	char nspath[2048];
+	char nspath[1024 * 3];
+	char nsprefix[2048];
 	pid_t spid;
 	ssize_t rc = 0;
 
@@ -144,13 +145,31 @@ void __attribute__((constructor)) nsenter() {
 
 	ns_list = getenv("NSLIST");
 	if (!ns_list) {
+		DEBUG("ns list is null\n");
 		return;
 	}
+	DEBUG("GET NSDIR\n");
+	nsdir = getenv("NSDIR");
+	if (nsdir && *nsdir != '\0') {
+		DEBUG("NSDIR=%s\n", nsdir);
+		sprintf(nsprefix, "%s", nsdir);
+	}
+	DEBUG("GET PID\n");
 	pid = getenv("NSPID");
-	if (pid == NULL || *pid == '\0') {
+	if (pid && *pid != '\0') {
+		sprintf(nsprefix,"/proc/%s/ns", pid);
+	}
+	if ((nsdir == NULL || *nsdir == '\0') && (pid == NULL || *pid == '\0')) {
+		if (nsdir == NULL) {
+			DEBUG("nsdir is null\n");
+		}
+
+		if (pid == NULL) {
+			DEBUG("pid is null\n");
+		}
 		return;
 	}
-	DEBUG("NSPID: %s\nNSLIST:%s\n", pid,ns_list);
+	DEBUG("NSPREFIX: %s\nNSLIST:%s\n", nsprefix,ns_list);
 	if (sscanf(ns_list,"%d",&ns_args) < 1) {
 		DEBUG("parse ns_list failed, ns_list value: %s\n", ns_list);
 		exit(-1);
@@ -159,7 +178,7 @@ void __attribute__((constructor)) nsenter() {
 	for (i = 0; i < list_len; i++) {
 		if (ns_enum_list[i] & ns_args) {
 			DEBUG("set ns: %s\n\n", ns_char_list[i]);
-			sprintf(nspath, "/proc/%s/ns/%s" , pid, ns_char_list[i]);
+			sprintf(nspath, "%s/%s" , nsprefix, ns_char_list[i]);
 			fds[i] = open(nspath, O_RDONLY);
 			if (fds[i] < 0) {
 				printf("open file: %s failed\n", nspath);
@@ -168,10 +187,11 @@ void __attribute__((constructor)) nsenter() {
 		}
 	}
 	DEBUG("after getns\n");
-
-	env_buf = malloc(sizeof(char) * 256);
-	rc = ns_get_envbuf(pid, &env_buf);
-	DEBUG("rc=%ld\nenv=%s\n", rc, env_buf);
+	if (pid && *pid != '\0') {
+		env_buf = malloc(sizeof(char) * 256);
+		rc = ns_get_envbuf(pid, &env_buf);
+		DEBUG("rc=%ld\nenv=%s\n", rc, env_buf);
+	}
 
 	// spid = fork();
 	// if (spid < 0) {

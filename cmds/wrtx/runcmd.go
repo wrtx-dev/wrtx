@@ -8,13 +8,13 @@ import (
 	"os/exec"
 	"syscall"
 	"wrtx/internal/config"
+	"wrtx/package/mount"
 	fsMount "wrtx/package/mount"
 	"wrtx/package/network"
 	"wrtx/package/simplecgroup"
 	cgroupv2 "wrtx/package/simplecgroup/v2"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -170,19 +170,44 @@ func runWrt(ctx *cli.Context) error {
 		return err
 	}
 	nsPath := fmt.Sprintf("/proc/%d/ns/", jsMsg.GrandChildPid)
-	files, err := os.ReadDir(nsPath)
-	if err != nil {
-		logrus.Errorf("read path: %s error: %v", nsPath, err)
-	}
-	for _, finfo := range files {
-		if !finfo.IsDir() {
-			info, err := finfo.Info()
-			if err != nil {
-				logrus.Errorf("read file info error: %v", err)
-			}
-			os.Symlink(fmt.Sprintf("%s/%s", nsPath, info.Name()), fmt.Sprintf("%s/%s", config.DefaultInstancePath, info.Name()))
-
+	var nsfiles = [...]string{"ipc", "net", "pid", "uts", "cgroup"}
+	savedNSPath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
+	if stat, err := os.Stat(savedNSPath); err == nil {
+		if !stat.IsDir() {
+			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
+			return fmt.Errorf("%s isn't a dir", savedNSPath)
 		}
+	} else {
+		if !os.IsNotExist(err) {
+			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
+			return fmt.Errorf("%s is exist but check it error: %v", savedNSPath, err)
+		}
+		err = os.Mkdir(savedNSPath, os.ModePerm)
+		if err != nil {
+			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
+			return fmt.Errorf("create dir %s error: %v", savedNSPath, err)
+		}
+	}
+
+	for _, nsfile := range nsfiles {
+		nsfilePath := fmt.Sprintf("%s/%s", nsPath, nsfile)
+		savedNSFilePath := fmt.Sprintf("%s/%s", savedNSPath, nsfile)
+		if _, err := os.Stat(savedNSFilePath); err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("create file:", savedNSFilePath)
+				fp, err := os.Create(savedNSFilePath)
+				if err != nil {
+					fmt.Println("create file", savedNSFilePath, " err: ", err)
+					continue
+				}
+				fp.Close()
+			}
+		}
+		err = mount.MountBind(savedNSFilePath, nsfilePath)
+		if err != nil {
+			fmt.Printf("save namespace: %s to %s error: %v\n", nsfilePath, savedNSFilePath, err)
+		}
+
 	}
 	cw.Write([]byte("continue"))
 	savePidToFile(jsMsg.GrandChildPid, fmt.Sprintf("%s/pid", config.DefaultRunDir))
