@@ -6,9 +6,8 @@ import (
 	"os/exec"
 	"strconv"
 	"syscall"
-	"time"
 	"wrtx/internal/config"
-	_ "wrtx/internal/rmnet"
+	_ "wrtx/internal/terminate"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -32,61 +31,32 @@ func stopWrt(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("covert %s to int error", string(buf))
 	}
-	err = syscall.Kill(pid, syscall.SIGTERM)
+	err = terminateCmd(pid)
 	if err != nil {
-		return fmt.Errorf("send SIGTERM to %d error: %v", pid, err)
+		return fmt.Errorf("termiate openwrt error:%v", err)
 	}
-	flag := false
-	for range 120 {
-		if !flag {
-			fmt.Printf("waiting pid: %d exit.", pid)
-			flag = true
-		} else {
-			fmt.Print(".")
-		}
-		time.Sleep(1 * time.Second)
-		if checkPidExist(string(buf)) {
-			continue
-		}
-		fmt.Println()
-		if err := syscall.Unlink(config.DefaultWrtxRunPidFile); err != nil {
-			logrus.Errorf("unlink file: %s error: %v", config.DefaultWrtxRunPidFile, err)
-		}
-		nspath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
-		enterNetNSCmd(nspath)
-		releaseNamespace(nspath)
-		if err := syscall.Unmount(conf.MergeDir, 0); err != nil {
-			logrus.Errorf("unmount path: %s error: %v", conf.MergeDir, err)
-		} else {
-			fmt.Printf("unmount path: %s successed\n", conf.MergeDir)
-		}
 
-		break
+	nspath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
+	releaseNamespace(nspath)
+	if err := syscall.Unmount(conf.MergeDir, 0); err != nil {
+		logrus.Errorf("unmount path: %s error: %v", conf.MergeDir, err)
+	} else {
+		fmt.Printf("unmount path: %s successed\n", conf.MergeDir)
+	}
+	if err := syscall.Unlink(config.DefaultWrtxRunPidFile); err != nil {
+		logrus.Errorf("unlink file: %s error: %v", config.DefaultWrtxRunPidFile, err)
 	}
 	return nil
 }
 
-func checkPidExist(pid string) bool {
-	pidDir := fmt.Sprintf("/proc/%s", pid)
-	if _, err := os.Stat(pidDir); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
-}
-
-func enterNetNSCmd(nspath string) {
-	cmd := exec.Command("/proc/self/exe", "rmnet")
-	cmd.Env = []string{fmt.Sprintf("NSDIR=%s", nspath)}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("NSLIST=%d", syscall.CLONE_NEWNET))
+func terminateCmd(pid int) error {
+	cmd := exec.Command("/proc/self/exe", "terminate")
+	cmd.Env = []string{fmt.Sprintf("NSPID=%d", pid)}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("NSLIST=%d", syscall.CLONE_NEWNS|syscall.CLONE_NEWNET|syscall.CLONE_NEWCGROUP))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
-	if err := cmd.Start(); err != nil {
-		fmt.Println("run into netns error:", err)
-	}
-	cmd.Wait()
+	return cmd.Run()
 }
 
 func releaseNamespace(nspath string) {
