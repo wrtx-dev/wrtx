@@ -3,6 +3,7 @@ package cgroupv2
 import (
 	"fmt"
 	"os"
+	"runtime"
 )
 
 const (
@@ -26,22 +27,53 @@ func New(rootPath, groupName string) (*CgroupV2, error) {
 		Path: dirPath,
 	}, nil
 }
+
+func (c *CgroupV2) setCpuNum(cpuNum int) error {
+	if c.Path == "" {
+		return fmt.Errorf("control cgroup root path wasn't init")
+	}
+	cPath := fmt.Sprintf("%s/cpuset.cpus", c.Path)
+	num := cpuNum
+	if num > runtime.NumCPU() {
+		num = runtime.NumCPU()
+	}
+
+	cFD, err := os.OpenFile(cPath, os.O_TRUNC|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	var infoLine string
+	if num > 1 {
+		infoLine = fmt.Sprintf("0-%d", num-1)
+	} else {
+		infoLine = fmt.Sprintf("%d", num-1)
+	}
+	_, err = cFD.Write([]byte(infoLine))
+	return err
+}
+
 func (c *CgroupV2) setCpuMax(percent int) error {
 	if c.Path == "" {
 		return fmt.Errorf("control cgroup root path wasn't init")
 	}
 	cPath := fmt.Sprintf("%s/%s", c.Path, "cpu.max")
-	cpuMax := 100000 / 100 * percent
+	if percent > 100 {
+		percent = 100
+	}
+	cpuMax := 1000 * percent
 	cFD, err := os.OpenFile(cPath, os.O_TRUNC|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
+	defer cFD.Close()
 	infoLine := fmt.Sprintf("%d %d", cpuMax, 100000)
+	// fmt.Println("infoLine:", infoLine)
 	_, err = cFD.Write([]byte(infoLine))
 	return err
 }
 
 func (c *CgroupV2) setMemMax(maxMem int) error {
+	memLimit := maxMem * 1024 * 1024
 	if c.Path == "" {
 		return fmt.Errorf("control cgroup root path wasn't init")
 	}
@@ -50,18 +82,30 @@ func (c *CgroupV2) setMemMax(maxMem int) error {
 	if err != nil {
 		return err
 	}
-	infoLine := fmt.Sprintf("%d", maxMem)
+	defer mFD.Close()
+	infoLine := fmt.Sprintf("%d", memLimit)
 	_, err = mFD.Write([]byte(infoLine))
 	return err
 }
 
-func (c *CgroupV2) SetCPUMemLimit(cpu int, mem int) error {
-	err := c.setCpuMax(cpu)
-	if err != nil {
+func (c *CgroupV2) SetCPUMemLimit(cpus, period, mem int) error {
+	if period > 0 {
+		err := c.setCpuMax(period)
+		if err != nil {
+			return err
+		}
+	}
+	if mem > 0 {
+		err := c.setMemMax(mem)
+		if err != nil {
+			return err
+		}
+	}
+	if cpus > 0 {
+		err := c.setCpuNum(cpus)
 		return err
 	}
-	err = c.setMemMax(mem)
-	return err
+	return nil
 }
 
 func (c *CgroupV2) AddProcesssors(pids []int) error {

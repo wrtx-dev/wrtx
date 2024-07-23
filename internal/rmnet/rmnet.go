@@ -21,9 +21,11 @@ func init() {
 		if linkType == "ipvlan" || linkType == "macvlan" {
 			if err := netlink.LinkSetDown(link); err != nil {
 				fmt.Println("set link:", link.Attrs().Name, "down error:", err)
+				continue
 			}
 			if err := netlink.LinkDel(link); err != nil {
 				fmt.Println("delete link:", link.Attrs().Name, "err:", err)
+				continue
 			}
 		}
 

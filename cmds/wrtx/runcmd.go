@@ -1,14 +1,18 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
+	"time"
 	"wrtx/internal/config"
-	"wrtx/package/mount"
 	fsMount "wrtx/package/mount"
 	"wrtx/package/network"
 	"wrtx/package/simplecgroup"
@@ -42,6 +46,18 @@ var runcmd = cli.Command{
 			Name:  "image",
 			Usage: "image name which will run",
 		},
+		&cli.StringFlag{
+			Name:  "period",
+			Usage: "set cpu period use percentage,eg.: 50",
+		},
+		&cli.StringFlag{
+			Name:  "cpus",
+			Usage: "how many cpu cores can openwrt use,eg.: 1",
+		},
+		&cli.StringFlag{
+			Name:  "mem",
+			Usage: "how many MB can openwrt use,eg.: 256",
+		},
 	},
 	Action: runWrt,
 }
@@ -52,6 +68,51 @@ func runWrt(ctx *cli.Context) error {
 	wrtxConfPath := ctx.String("conf")
 	imgName := ctx.String("image")
 	nictype := ctx.String("nictype")
+	cpuCores := ctx.String("cpus")
+	cpuPeriod := ctx.String("period")
+	mem := ctx.String("mem")
+	period := 0
+	memory := 0
+	cpus := 0
+	rLimit := false
+	if cpuCores != "" || cpuPeriod != "" || mem != "" {
+		rLimit = true
+	}
+
+	if cpuCores != "" {
+		var err error
+		cpus, err = strconv.Atoi(cpuCores)
+		if err != nil {
+			return fmt.Errorf("parse cpus error: %v", err)
+		}
+		if cpus < 1 {
+			return fmt.Errorf("invaild vaule for cpus: %d", cpus)
+		}
+		if cpus > runtime.NumCPU() {
+			cpus = runtime.NumCPU()
+		}
+	}
+
+	if cpuPeriod != "" {
+		var err error
+		period, err = strconv.Atoi(cpuPeriod)
+		if err != nil {
+			return fmt.Errorf("parse cpu period error: %v", err)
+		}
+		if period < 0 {
+			return fmt.Errorf("invaild cpu period: %d", period)
+		}
+	}
+
+	if mem != "" {
+		var err error
+		if memory, err = strconv.Atoi(mem); err != nil {
+			return fmt.Errorf("parse mem error: %v", err)
+		}
+		if memory < 0 {
+			return fmt.Errorf("invail mem: %d", memory)
+		}
+	}
 	if imgName == "" {
 		imgName = config.DefaultImageName
 	}
@@ -118,27 +179,31 @@ func runWrt(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("create new process error")
 	}
-	cg, err := simplecgroup.GetCgroupType()
-	fmt.Println("cgroup type:", cg)
-	if err != nil {
-		syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-		return err
-	}
-	if cg&simplecgroup.CGTypeTwo != 0 {
-		mgr, err := cgroupv2.New("", "myopenwrt")
+
+	if rLimit {
+		cg, err := simplecgroup.GetCgroupType()
 		if err != nil {
 			syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
 			return err
 		}
-		err = mgr.SetCPUMemLimit(50, 268435456)
-		if err != nil {
-			syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-			return err
-		}
-		err = mgr.AddProcesssors([]int{cmd.Process.Pid})
-		if err != nil {
-			syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-			return err
+		if cg&simplecgroup.CGTypeTwo != 0 {
+			cgroupSubDir := fmt.Sprintf("wrtx_%s", timeHashString())
+			// fmt.Println("cgroupSubDir:", cgroupSubDir)
+			mgr, err := cgroupv2.New("", cgroupSubDir)
+			if err != nil {
+				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
+				return err
+			}
+			err = mgr.SetCPUMemLimit(cpus, period, memory)
+			if err != nil {
+				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
+				return err
+			}
+			err = mgr.AddProcesssors([]int{cmd.Process.Pid})
+			if err != nil {
+				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
+				return err
+			}
 		}
 	}
 	msg := make([]byte, 4096)
@@ -152,17 +217,17 @@ func runWrt(ctx *cli.Context) error {
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("read msg from sub process error: %v", err)
 	}
-	fmt.Println("read json msg:", string(msg[:n]))
+	// fmt.Println("read json msg:", string(msg[:n]))
 	jsMsg := &pidMsg{}
 	err = json.Unmarshal(msg[:n], jsMsg)
 	if err != nil {
 		return fmt.Errorf("get sub pid error: %v", err)
 	}
-	wpid, err := syscall.Wait4(jsMsg.ChildPID, nil, 0, nil)
+	_, err = syscall.Wait4(jsMsg.ChildPID, nil, 0, nil)
 	if err != nil {
 		return fmt.Errorf("wait error: %v", err)
 	}
-	fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
+	// fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
 	if nictype == "ipvlan" {
 		_, err = network.NewIPvlanDev(netDevName, phy)
 		if err != nil {
@@ -215,7 +280,7 @@ func runWrt(ctx *cli.Context) error {
 				fp.Close()
 			}
 		}
-		err = mount.MountBind(savedNSFilePath, nsfilePath)
+		err = fsMount.MountBind(savedNSFilePath, nsfilePath)
 		if err != nil {
 			fmt.Printf("save namespace: %s to %s error: %v\n", nsfilePath, savedNSFilePath, err)
 		}
@@ -268,11 +333,9 @@ func NewProcess(cmd *exec.Cmd, rootDir string) ([2]int, *os.File, *os.File, erro
 	cmd.Env = append(cmd.Env, fmt.Sprintf("_CTRL_PIPE=%d", stdioCount+len(cmd.ExtraFiles)-1))
 
 	cmd.Env = append(cmd.Env, fmt.Sprintf("_ROOTDIR=%s", rootDir))
-	fmt.Println("cmd's env: ", cmd.Env)
+	// fmt.Println("cmd's env: ", cmd.Env)
 	if err := cmd.Start(); err != nil {
 		return r, cr, cw, fmt.Errorf("start cmd err: %s", err)
-	} else {
-		fmt.Println("create new proc's pid:", cmd.Process.Pid)
 	}
 	return r, cr, cw, nil
 }
@@ -287,4 +350,32 @@ func savePidToFile(pid int, file string) error {
 		fp.Write([]byte(pidStr))
 	}
 	return fmt.Errorf("create pid file err")
+}
+
+func checkCpuCores(cores string) error {
+	nRealCore := runtime.NumCPU() - 1
+	if cores == "" {
+		return nil
+	}
+	coreList := strings.Split(cores, ",")
+	for _, core := range coreList {
+		if strings.Contains(core, "-") {
+
+		} else {
+			id, err := strconv.Atoi(core)
+			if err != nil {
+				return fmt.Errorf("parse cpu core's args err: %s", err)
+			}
+			if id > nRealCore {
+				return fmt.Errorf("the cpu have %d cells, id: %d can't large than it", nRealCore+1, id)
+			}
+		}
+	}
+	return nil
+}
+
+func timeHashString() string {
+	now := time.Now().Unix()
+	sum := md5.Sum([]byte(fmt.Sprintf("%d", now)))
+	return fmt.Sprintf("%x", sum)[:8]
 }

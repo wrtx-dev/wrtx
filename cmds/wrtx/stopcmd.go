@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 	"wrtx/internal/config"
-	_ "wrtx/internal/librmnet"
+	_ "wrtx/internal/rmnet"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -52,14 +52,15 @@ func stopWrt(ctx *cli.Context) error {
 		if err := syscall.Unlink(config.DefaultWrtxRunPidFile); err != nil {
 			logrus.Errorf("unlink file: %s error: %v", config.DefaultWrtxRunPidFile, err)
 		}
+		nspath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
+		enterNetNSCmd(nspath)
+		releaseNamespace(nspath)
 		if err := syscall.Unmount(conf.MergeDir, 0); err != nil {
 			logrus.Errorf("unmount path: %s error: %v", conf.MergeDir, err)
 		} else {
 			fmt.Printf("unmount path: %s successed\n", conf.MergeDir)
 		}
-		nspath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
-		enterNetNSCmd(nspath)
-		releaseNamespace(nspath)
+
 		break
 	}
 	return nil
