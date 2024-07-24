@@ -22,6 +22,7 @@ func init() {
 		os.Exit(-1)
 	}
 	releaseNetworkDev()
+	umount()
 	os.Exit(0)
 }
 
@@ -97,4 +98,9 @@ func releaseNetworkDev() {
 		}
 
 	}
+}
+
+func umount() {
+	syscall.Unmount("/proc", 0)
+	syscall.Unmount("/sys", 0)
 }

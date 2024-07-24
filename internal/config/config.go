@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	baseWrtxPath        = "/usr/local/wrtx"
-	DefaultImagePath    = baseWrtxPath + "/images"
-	DefaultConfPath     = baseWrtxPath + "/conf/conf.json"
-	DefaultInstancePath = baseWrtxPath + "/instances"
-	DefaultRootPath     = DefaultImagePath + "/openwrt"
-	DefaultImageName    = "openwrt"
-	DefaultRunDir       = baseWrtxPath + "/run"
+	baseWrtxPath          = "/usr/local/wrtx"
+	DefaultImagePath      = baseWrtxPath + "/images"
+	DefaultConfPath       = baseWrtxPath + "/conf/conf.json"
+	DefaultInstancePath   = baseWrtxPath + "/instances"
+	DefaultRootPath       = DefaultImagePath + "/openwrt"
+	DefaultImageName      = "openwrt"
+	DefaultRunDir         = baseWrtxPath + "/run"
 	DefaultWrtxRunPidFile = DefaultRunDir + "/pid"
 )
 
@@ -30,6 +30,7 @@ type WrtxConfig struct {
 	MergeDir       string `json:"merge_dir"`
 	UpperDir       string `json:"upper_dir"`
 	VirtualNicType string `json:"virtual_nic_type"`
+	CgroupPath     string `json:"cgroup_path"`
 }
 
 func (wc *WrtxConfig) Dumps(dst string) error {

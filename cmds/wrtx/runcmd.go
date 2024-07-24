@@ -125,7 +125,30 @@ func runWrt(ctx *cli.Context) error {
 	if nictype == "" {
 		nictype = "macvlan"
 	}
-
+	if rLimit {
+		cg, err := simplecgroup.GetCgroupType()
+		if err != nil {
+			syscall.Kill(os.Getpid(), syscall.SIGKILL)
+			return err
+		}
+		if cg&simplecgroup.CGTypeTwo != 0 {
+			cgroupSubDir := fmt.Sprintf("wrtx_%s", timeHashString())
+			// fmt.Println("cgroupSubDir:", cgroupSubDir)
+			mgr, err := cgroupv2.New("", cgroupSubDir)
+			if err != nil {
+				return err
+			}
+			conf.CgroupPath = mgr.Path
+			err = mgr.SetCPUMemLimit(cpus, period, memory)
+			if err != nil {
+				return err
+			}
+			err = mgr.AddProcesssors([]int{os.Getpid()})
+			if err != nil {
+				return err
+			}
+		}
+	}
 	workDir := conf.WorkDir
 	if workDir == "" {
 		workDir = config.DefaultInstancePath + "/workDir"
@@ -180,32 +203,6 @@ func runWrt(ctx *cli.Context) error {
 		return fmt.Errorf("create new process error")
 	}
 
-	if rLimit {
-		cg, err := simplecgroup.GetCgroupType()
-		if err != nil {
-			syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-			return err
-		}
-		if cg&simplecgroup.CGTypeTwo != 0 {
-			cgroupSubDir := fmt.Sprintf("wrtx_%s", timeHashString())
-			// fmt.Println("cgroupSubDir:", cgroupSubDir)
-			mgr, err := cgroupv2.New("", cgroupSubDir)
-			if err != nil {
-				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-				return err
-			}
-			err = mgr.SetCPUMemLimit(cpus, period, memory)
-			if err != nil {
-				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-				return err
-			}
-			err = mgr.AddProcesssors([]int{cmd.Process.Pid})
-			if err != nil {
-				syscall.Kill(cmd.Process.Pid, syscall.SIGKILL)
-				return err
-			}
-		}
-	}
 	msg := make([]byte, 4096)
 	rr := os.NewFile(uintptr(r[0]), "__init_pipe")
 	_, err = rr.Write([]byte("continue"))

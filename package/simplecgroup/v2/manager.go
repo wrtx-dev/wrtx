@@ -42,6 +42,7 @@ func (c *CgroupV2) setCpuNum(cpuNum int) error {
 	if err != nil {
 		return err
 	}
+	defer cFD.Close()
 	var infoLine string
 	if num > 1 {
 		infoLine = fmt.Sprintf("0-%d", num-1)
@@ -117,6 +118,7 @@ func (c *CgroupV2) AddProcesssors(pids []int) error {
 	if err != nil {
 		return err
 	}
+	defer pFD.Close()
 	for _, pid := range pids {
 		pLine := fmt.Sprintf("%d\n", pid)
 		_, err := pFD.Write([]byte(pLine))

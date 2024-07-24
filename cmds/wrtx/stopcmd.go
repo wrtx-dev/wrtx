@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strconv"
 	"syscall"
+	"time"
 	"wrtx/internal/config"
 	_ "wrtx/internal/terminate"
 
@@ -40,11 +41,13 @@ func stopWrt(ctx *cli.Context) error {
 	releaseNamespace(nspath)
 	if err := syscall.Unmount(conf.MergeDir, 0); err != nil {
 		logrus.Errorf("unmount path: %s error: %v", conf.MergeDir, err)
-	} else {
-		fmt.Printf("unmount path: %s successed\n", conf.MergeDir)
 	}
 	if err := syscall.Unlink(config.DefaultWrtxRunPidFile); err != nil {
 		logrus.Errorf("unlink file: %s error: %v", config.DefaultWrtxRunPidFile, err)
+	}
+
+	if conf.CgroupPath != "" {
+		rmCgroupSubDirs(conf.CgroupPath)
 	}
 	return nil
 }
@@ -68,6 +71,29 @@ func releaseNamespace(nspath string) {
 		upath := fmt.Sprintf("%s/%s", nspath, ns.Name())
 		if err := syscall.Unmount(upath, 0); err != nil {
 			fmt.Println("unmount", upath, "error:", err)
+		}
+	}
+}
+
+func rmCgroupSubDirs(path string) {
+	items, err := os.ReadDir(path)
+	if err != nil {
+		fmt.Println("read cgroup's dir:", path, "err:", err)
+		return
+	}
+	for _, item := range items {
+		if !item.IsDir() {
+			continue
+		}
+		tpath := fmt.Sprintf("%s/%s", path, item.Name())
+		rmCgroupSubDirs(tpath)
+	}
+	err = os.Remove(path)
+	if err != nil {
+		time.Sleep(time.Second * 2)
+		err = os.Remove(path)
+		if err != nil {
+			fmt.Println("remove", path, "err:", err)
 		}
 	}
 }
