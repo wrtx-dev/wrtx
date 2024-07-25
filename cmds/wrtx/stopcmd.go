@@ -88,6 +88,9 @@ func stopWrt(ctx *cli.Context) error {
 	// if conf.CgroupPath != "" {
 	// 	rmCgroupSubDirs(conf.CgroupPath)
 	// }
+	if conf.ResLimit {
+		rmCgroupSubDirs(status.CgroupPath)
+	}
 	return nil
 }
 
