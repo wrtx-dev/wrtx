@@ -36,7 +36,6 @@ type WrtxConfig struct {
 	MergeDir       string            `json:"merge_dir"`
 	UpperDir       string            `json:"upper_dir"`
 	VirtualNicType string            `json:"virtual_nic_type"`
-	CgroupPath     string            `json:"cgroup_path"`
 	NetConfigFile  string            `json:"net_config_file"`
 	Cpus           int               `json:"cpus"`
 	Mem            int               `json:"mem"`
@@ -44,6 +43,7 @@ type WrtxConfig struct {
 	ConfigNetwork  bool              `json:"config_network"`
 	NicType        string            `json:"nic_type"`
 	MountMap       map[string]string `json:"mount_map"`
+	StatusFile     string            `json:"status_file"`
 }
 
 func (gc *GlobalConfig) Load(path string) error {

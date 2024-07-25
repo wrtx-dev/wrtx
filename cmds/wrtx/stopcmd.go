@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"syscall"
 	"time"
 	"wrtx/internal/config"
+	"wrtx/internal/instances"
 	_ "wrtx/internal/terminate"
 
 	"github.com/sirupsen/logrus"
@@ -15,43 +15,79 @@ import (
 )
 
 var stopCmd = cli.Command{
-	Name:   "stop",
-	Usage:  "stop openwrt in namespace",
+	Name:      "stop",
+	Usage:     "stop openwrt in namespace",
+	ArgsUsage: "instance_name",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "conf",
+			Usage: "conf file's path, default: " + config.DefaultConfPath,
+		},
+	},
 	Action: stopWrt,
 }
 
 func stopWrt(ctx *cli.Context) error {
+	globalConfPath := ctx.String("conf")
+	globalConfLoaded := false
+
+	var instanceName string
+	if len(ctx.Args().Slice()) == 0 {
+		instanceName = "openwrt"
+	} else {
+		instanceName = ctx.Args().First()
+	}
+	if globalConfPath == "" {
+		globalConfPath = config.DefaultConfPath
+	}
+	globalConfig := config.NewGlobalConf()
+	if err := globalConfig.Load(globalConfPath); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("load global config error: %v", err)
+		}
+	} else {
+		globalConfLoaded = true
+	}
+	if !globalConfLoaded {
+		return fmt.Errorf("global config not found: %s", globalConfPath)
+	}
+
 	conf := config.NewConf()
-	conf.Load(config.DefaultConfPath)
-	pidfile := config.DefaultWrtxRunPidFile
-	buf, err := os.ReadFile(pidfile)
-	if err != nil {
-		return fmt.Errorf("read file %s error: %v", pidfile, err)
+	instanceConfig := fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, instanceName)
+	if err := conf.Load(instanceConfig); err != nil {
+		return fmt.Errorf("load instance config error: %v", err)
 	}
-	pid, err := strconv.Atoi(string(buf))
-	if err != nil {
-		return fmt.Errorf("covert %s to int error", string(buf))
+	if err := conf.Load(instanceConfig); err != nil {
+		return fmt.Errorf("load instance config error: %v", err)
 	}
-	err = terminateCmd(pid)
+	status := instances.NewStatus()
+	if err := status.Load(conf.StatusFile); err != nil {
+		return fmt.Errorf("load status error: %v", err)
+	}
+
+	pid := status.PID
+	err := terminateCmd(pid)
 	if err != nil {
 		return fmt.Errorf("termiate openwrt error:%v", err)
 	}
 
-	nspath := fmt.Sprintf("%s/ns", config.DefaultInstancePath)
+	nspath := fmt.Sprintf("%s/ns", conf.Instances)
 	releaseNamespace(nspath)
-	if err := syscall.Unmount(fmt.Sprintf("%s/etc/config/network", conf.MergeDir), 0); err != nil {
-		logrus.Errorf("unmount path: %s error: %v", fmt.Sprintf("%s/etc/config/network", conf.MergeDir), err)
+	if conf.NetConfigFile != "" {
+		if err := syscall.Unmount(fmt.Sprintf("%s/etc/config/network", conf.MergeDir), 0); err != nil {
+			logrus.Errorf("unmount path: %s error: %v", fmt.Sprintf("%s/etc/config/network", conf.MergeDir), err)
+		}
 	}
 	if err := syscall.Unmount(conf.MergeDir, 0); err != nil {
 		logrus.Errorf("unmount path: %s error: %v", conf.MergeDir, err)
 	}
-	if err := syscall.Unlink(config.DefaultWrtxRunPidFile); err != nil {
-		logrus.Errorf("unlink file: %s error: %v", config.DefaultWrtxRunPidFile, err)
+	if err := syscall.Unlink(conf.StatusFile); err != nil {
+		logrus.Errorf("unlink file: %s error: %v", conf.StatusFile, err)
 	}
 
-	if conf.CgroupPath != "" {
-		rmCgroupSubDirs(conf.CgroupPath)
-	}
+	// if conf.CgroupPath != "" {
+	// 	rmCgroupSubDirs(conf.CgroupPath)
+	// }
 	return nil
 }
 

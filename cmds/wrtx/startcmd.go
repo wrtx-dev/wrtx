@@ -10,8 +10,9 @@ import (
 )
 
 var startCmd = cli.Command{
-	Name:  "start",
-	Usage: "start wrtx's instance",
+	Name:      "start",
+	Usage:     "start wrtx's instance",
+	ArgsUsage: "instance name",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "config",
@@ -48,6 +49,9 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	if _, err := os.Stat(conf.StatusFile); err == nil {
+		return fmt.Errorf("instance %s is already running", name)
+	}
 	return instances.StartInstance(conf)
 }
 
@@ -58,6 +62,9 @@ func loadInstanceConfig(confPath string) (*config.WrtxConfig, error) {
 			return &conf, err
 		}
 		return &conf, fmt.Errorf("load config file: %s error: %v", confPath, err)
+	}
+	if err := conf.Load(confPath); err != nil {
+		return nil, fmt.Errorf("load config file: %s error: %v", confPath, err)
 	}
 	return &conf, nil
 }

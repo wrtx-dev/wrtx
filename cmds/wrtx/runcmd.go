@@ -225,6 +225,7 @@ func runWrt(ctx *cli.Context) error {
 		conf.NetConfigFile = netconfPath
 	}
 	conf.ConfigNetwork = configNetwork
+	conf.StatusFile = fmt.Sprintf("%s/status.json", conf.Instances)
 	if err := conf.Dumps(confPath); err != nil {
 		return fmt.Errorf("create new instance error: %v", err)
 	}

@@ -27,12 +27,14 @@ type pidMsg struct {
 
 func StartInstance(conf *config.WrtxConfig) error {
 
+	status := NewStatus()
+
 	if err := mountRootfs(*conf); err != nil {
 		fmt.Println(err.Error())
 		return errors.WithMessage(err, "mount rootfs error")
 	}
 	if conf.ResLimit {
-		if err := setResLimit(conf); err != nil {
+		if err := setResLimit(conf, status); err != nil {
 			return fmt.Errorf("set res limit error: %v", err)
 		}
 	}
@@ -126,7 +128,11 @@ func StartInstance(conf *config.WrtxConfig) error {
 
 	}
 	cw.Write([]byte("continue"))
-	savePidToFile(jsMsg.GrandChildPid, fmt.Sprintf("%s/pid", conf.Instances))
+	status.PID = jsMsg.GrandChildPid
+	status.Status = "Running"
+	if err := status.Dump(conf.StatusFile); err != nil {
+		return fmt.Errorf("dump status error: %v", err)
+	}
 	return nil
 }
 
@@ -193,18 +199,6 @@ func NewProcess(cmd *exec.Cmd, rootDir string) ([2]int, *os.File, *os.File, erro
 	return r, cr, cw, nil
 }
 
-func savePidToFile(pid int, file string) error {
-	if _, err := os.Stat(file); err != nil && os.IsNotExist(err) {
-		fp, err := os.OpenFile(file, os.O_CREATE|os.O_RDWR, os.ModePerm)
-		if err != nil {
-			return errors.WithMessagef(err, "create file: %s error", file)
-		}
-		pidStr := fmt.Sprintf("%d", pid)
-		fp.Write([]byte(pidStr))
-	}
-	return fmt.Errorf("create pid file err")
-}
-
 func timeHashString() string {
 	now := time.Now().Unix()
 	sum := md5.Sum([]byte(fmt.Sprintf("%d", now)))
@@ -222,7 +216,7 @@ func timeHashString() string {
 // 	return &conf, nil
 // }
 
-func setResLimit(conf *config.WrtxConfig) error {
+func setResLimit(conf *config.WrtxConfig, status *Status) error {
 	cg, err := simplecgroup.GetCgroupType()
 	if err != nil {
 		syscall.Kill(os.Getpid(), syscall.SIGKILL)
@@ -231,11 +225,11 @@ func setResLimit(conf *config.WrtxConfig) error {
 	if cg&simplecgroup.CGTypeTwo != 0 {
 		cgroupSubDir := fmt.Sprintf("wrtx_%s", timeHashString())
 		// fmt.Println("cgroupSubDir:", cgroupSubDir)
+		status.CgroupPath = cgroupSubDir
 		mgr, err := cgroupv2.New("", cgroupSubDir)
 		if err != nil {
 			return err
 		}
-		conf.CgroupPath = mgr.Path
 		err = mgr.SetCPUMemLimit(conf.Cpus, conf.Period, conf.Mem)
 		if err != nil {
 			return err
