@@ -5,20 +5,11 @@ import (
 	"os"
 	_ "wrtx/internal/init"
 
-	_ "embed"
-
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 var WrtxVersion string
-
-type pidMsg struct {
-	ChildPID      int `json:"childpid"`
-	GrandChildPid int `json:"grandchildpid"`
-}
-
-const stdioCount = 3
 
 func main() {
 	app := cli.App{
@@ -39,6 +30,7 @@ func main() {
 			&shellCmd,
 			&stopCmd,
 			&proxyCmd,
+			&startCmd,
 		},
 	}
 	logrus.SetFormatter(&logrus.JSONFormatter{})
