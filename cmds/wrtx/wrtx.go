@@ -14,7 +14,7 @@ var WrtxVersion string
 func main() {
 	app := cli.App{
 		Name:  "wrtx",
-		Usage: fmt.Sprintf("simple to run openwrtx in namespace, version: %s", WrtxVersion),
+		Usage: fmt.Sprintf("Run openwrt quickly and easily in linux namespaces, version: %s", WrtxVersion),
 		Commands: []*cli.Command{
 			&runcmd,
 			// {
