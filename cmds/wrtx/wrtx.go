@@ -17,14 +17,6 @@ func main() {
 		Usage: fmt.Sprintf("Run openwrt quickly and easily in linux namespaces, version: %s", WrtxVersion),
 		Commands: []*cli.Command{
 			&runcmd,
-			// {
-			// 	Name:  "cg",
-			// 	Usage: "cgroup test",
-			// 	Action: func(ctx *cli.Context) error {
-			// 		return nil
-
-			// 	},
-			// },
 			&importCmd,
 			&execCmd,
 			&shellCmd,
