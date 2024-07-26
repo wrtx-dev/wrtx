@@ -156,20 +156,23 @@ func mountRootfs(conf config.WrtxConfig) error {
 	if err != nil {
 		return err
 	}
-	target := fmt.Sprintf("%s/etc/config/network", conf.MergeDir)
-	if _, err := os.Stat(target); err != nil {
-		if os.IsNotExist(err) {
-			fp, err := os.Create(target)
-			if err != nil {
-				return errors.WithMessagef(err, "create file %s error", target)
+	if conf.ConfigNetwork {
+		target := fmt.Sprintf("%s/etc/config/network", conf.MergeDir)
+		if _, err := os.Stat(target); err != nil {
+			if os.IsNotExist(err) {
+				fp, err := os.Create(target)
+				if err != nil {
+					return errors.WithMessagef(err, "create file %s error", target)
+				}
+				fp.Close()
+			} else {
+				return errors.WithMessagef(err, "check file %s error", target)
 			}
-			fp.Close()
-		} else {
-			return errors.WithMessagef(err, "check file %s error", target)
 		}
+		err = fsMount.MountBind(target, conf.NetConfigFile)
+		return errors.WithMessagef(err, "mount bind %s to %s error", conf.NetConfigFile, target)
 	}
-	err = fsMount.MountBind(target, conf.NetConfigFile)
-	return errors.WithMessagef(err, "mount bind %s to %s error", conf.NetConfigFile, target)
+	return nil
 }
 
 func NewProcess(cmd *exec.Cmd, rootDir string) ([2]int, *os.File, *os.File, error) {

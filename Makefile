@@ -3,8 +3,12 @@ all: wrtx
 version=$(shell cat VERSION)
 
 PACKAGES=$(shell find package -type f -name '*.go')
+INTERNAL_PACKAGES=$(shell find internal -type f -name '*.go')
+CMDS=$(shell find cmds -type f -name '*.go')
 
-wrtx: $(wildcard cmds/wrtx/*.go) $(PACKAGES)
+.PHONY: all clean modupdate deb
+
+wrtx: $(CMDS) $(PACKAGES) $(INTERNAL_PACKAGES)
 	@go build -C cmds/wrtx -ldflags "-X main.WrtxVersion=${version}"
 	@mv cmds/wrtx/wrtx ./
 

@@ -52,3 +52,11 @@ func (s *Status) Load(path string) error {
 	}
 	return nil
 }
+
+func (s *Status) Pid() int {
+	return s.PID
+}
+
+func (s *Status) Cgroup() string {
+	return s.CgroupPath
+}

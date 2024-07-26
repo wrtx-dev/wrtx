@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 	"wrtx/internal/config"
-	"wrtx/internal/instances"
 	_ "wrtx/internal/terminate"
+	"wrtx/internal/utils"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -29,7 +29,6 @@ var stopCmd = cli.Command{
 
 func stopWrt(ctx *cli.Context) error {
 	globalConfPath := ctx.String("conf")
-	globalConfLoaded := false
 
 	var instanceName string
 	if len(ctx.Args().Slice()) == 0 {
@@ -37,36 +36,18 @@ func stopWrt(ctx *cli.Context) error {
 	} else {
 		instanceName = ctx.Args().First()
 	}
-	if globalConfPath == "" {
-		globalConfPath = config.DefaultConfPath
-	}
-	globalConfig := config.NewGlobalConf()
-	if err := globalConfig.Load(globalConfPath); err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("load global config error: %v", err)
-		}
-	} else {
-		globalConfLoaded = true
-	}
-	if !globalConfLoaded {
-		return fmt.Errorf("global config not found: %s", globalConfPath)
+	conf, err := utils.GetInstancesConfig(globalConfPath, instanceName)
+	if err != nil {
+		return fmt.Errorf("get instance config error:%v", err)
 	}
 
-	conf := config.NewConf()
-	instanceConfig := fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, instanceName)
-	if err := conf.Load(instanceConfig); err != nil {
-		return fmt.Errorf("load instance config error: %v", err)
-	}
-	if err := conf.Load(instanceConfig); err != nil {
-		return fmt.Errorf("load instance config error: %v", err)
-	}
-	status := instances.NewStatus()
-	if err := status.Load(conf.StatusFile); err != nil {
-		return fmt.Errorf("load status error: %v", err)
+	status, err := utils.GetStatusByWrtxConfig(conf)
+	if err != nil {
+		return fmt.Errorf("get status error:%v", err)
 	}
 
 	pid := status.PID
-	err := terminateCmd(pid)
+	err = terminateCmd(pid)
 	if err != nil {
 		return fmt.Errorf("termiate openwrt error:%v", err)
 	}
