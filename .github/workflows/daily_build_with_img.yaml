@@ -1,0 +1,238 @@
+name:
+  Scheduled compilation of wrtx with openwrt and immortalwrt
+
+on:
+  schedule:
+    - cron: '20 18 * * *'
+
+jobs:
+  build-openwrt:
+    name: build-openwrt
+    runs-on: ubuntu-latest
+    outputs:
+      rootfs: ${{ steps.pick.outputs.ROOTFS }} 
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup openwrt build environ
+        run: |
+          sudo apt update
+          sudo apt -y install build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext \
+            git libncurses5-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget \
+            libpcre2-dev 
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: clone openwrt
+        run: bash clone_openwrt.sh master
+      
+      - name: update feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+
+      - name: install feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds install -a
+
+      - name: make .config file
+        run: |
+          cp x86_64-config openwrt/.config
+          cd openwrt
+          bash ./scripts/diffconfig.sh .config > diffconfig
+          mv diffconfig .config
+          make defconfig
+          make oldconfig
+
+      - name: build openwrt
+        id: build
+        run: |
+          cd openwrt
+          make -j$(($(nproc) *2))
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: pick files
+        id: pick
+        if: steps.build.outputs.status == 'success' && !cancelled()
+        run: |
+          cd openwrt/bin/targets/*/*
+          rm -rf packages
+          echo "ROOTFS_FILE=$(pwd)/$(ls *rootfs.tar.gz)" >> $GITHUB_ENV
+          echo "ROOTFS=$(ls *rootfs.tar.gz)" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
+
+
+      - name: artifact
+        uses: actions/upload-artifact@v4
+        if: steps.pick.outputs.status == 'success' && !cancelled()
+        with:
+          name: openwrt_rootfs
+          path: ${{ env.ROOTFS_FILE }}
+
+  build-immortal:
+    runs-on: ubuntu-latest
+    outputs:
+      rootfs: ${{ steps.pick.outputs.ROOTFS }} 
+    steps:
+
+      - name: setup build environ
+        id: setup
+        run: |
+            sudo apt update -y
+            sudo apt full-upgrade -y
+            sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+              bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk gettext gcc-multilib \
+              g++-multilib git gnutls-dev gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
+              libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5 \
+              libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lld llvm lrzsz mkisofs msmtp \
+              nano ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pip python3-ply \
+              python3-docutils python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
+              texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+            sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+
+      - name: Maximize build disk space
+        uses: easimon/maximize-build-space@master
+        with:
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
+          remove-codeql: true
+          remove-docker-images: true
+
+      - name: check disk space
+        run: |
+          du -h -d 0
+          df -hT
+
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: clone ImmortalWrt
+        run: |
+          mkdir ImmortalWrt
+          cd ImmortalWrt
+          git init
+          git remote add origin https://github.com/immortalwrt/immortalwrt.git
+          git fetch origin v23.05.3
+          git reset --hard FETCH_HEAD
+
+      - name: update feeds
+        run: |
+          cd ImmortalWrt 
+          ./scripts/feeds update -a
+
+      - name: install feeds
+        run: |
+          cd ImmortalWrt
+          ./scripts/feeds install -a
+
+      - name: make config file
+        run: |
+          cp immortalwrt_x86_config ImmortalWrt/.config
+          cd ImmortalWrt
+          bash ./scripts/diffconfig.sh .config > diffconfig
+          mv diffconfig .config
+          make defconfig
+          make oldconfig
+        
+      - name: build ImmortalWrt
+        id: build
+        run: |
+          cd ImmortalWrt
+          make -j$(nproc) && echo "status=success" >> $GITHUB_OUTPUT || make -j1 V=s
+
+      - name: pick files
+        id: pick
+        if: steps.build.outputs.status == 'success' && !cancelled()
+        run: |
+          cd ImmortalWrt/bin/targets/*/*
+          rm -rf packages
+          echo "ROOTFS_FILE=$(pwd)/$(ls *rootfs.tar.gz)" >> $GITHUB_ENV
+          echo "ROOTFS=$(ls *rootfs.tar.gz)" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: artifact
+        uses: actions/upload-artifact@v4
+        if: steps.pick.outputs.status == 'success' && !cancelled()
+        with:
+          name: immortal_rootfs
+          path: ${{ env.ROOTFS_FILE }}
+
+  build-wrtx:
+    name: build-wrtx
+    needs: [build-openwrt, build-immortal]
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v4
+      
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.3
+
+      - name: clone wrtx
+        run: |
+          mkdir wrtx
+          cd wrtx
+          git init
+          git remote add origin https://github.com/wrtx-dev/wrtx.git
+          git fetch origin dev
+          git reset --hard FETCH_HEAD
+
+      - name: build wrtx
+        run: |
+          cd wrtx
+          make modupdate 
+          make 
+          echo "WRTX_BIN=$(pwd)/wrtx" >> $GITHUB_ENV 
+          echo "WRTX_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      
+      - name: Download openwrt rootfs
+        uses: actions/download-artifact@v4
+        with:
+          name: openwrt_rootfs
+
+      - name: Download immortal rootfs
+        uses: actions/download-artifact@v4
+        with:
+          name: immortal_rootfs
+
+      - name: unpack openwrt rootfs
+        id: unpack_openwrt
+        env:
+          ROOTFS_FILE: ${{ needs.build-openwrt.outputs.rootfs }}
+        run: |
+          mkdir openwrt_rootfs
+          tar xvzf ${{ env.ROOTFS_FILE }} -C openwrt_rootfs
+          echo "status=success" >> $GITHUB_OUTPUT
+      
+      - name: unpack immortal rootfs
+        id: unpack_immortal
+        env:
+          ROOTFS_FILE: ${{ needs.build-immortal.outputs.rootfs }}
+        run: |
+          mkdir immortal_rootfs
+          tar xvzf ${{ env.ROOTFS_FILE }} -C immortal_rootfs
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: make deb package
+        id: pack
+        if: steps.unpack_openwrt.outputs.status == 'success' && steps.unpack_immortal.outputs.status == 'success' && !cancelled()
+        run: |
+          bash pack_deb.sh $(pwd)/openwrt_rootfs $(pwd)/immortal_rootfs ${{ env.WRTX_BIN }} ${{ env.WRTX_VERSION }}
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "DEB_PACKAGE=$(ls *.deb)" >> $GITHUB_ENV
+          echo "status=success" 
+          echo "DEB_PACKAGE=$(ls *.deb)" 
+
+      - name: artifact
+        uses: actions/upload-artifact@v4
+        if: steps.pack.outputs.status == 'success' && !cancelled()
+        with:
+          name: wrtx_deb
+          path: ${{ env.DEB_PACKAGE }}
