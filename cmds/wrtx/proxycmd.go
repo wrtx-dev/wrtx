@@ -9,10 +9,10 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"syscall"
 	"wrtx/internal/config"
+	"wrtx/internal/utils"
 
 	"github.com/urfave/cli/v2"
 )
@@ -35,6 +35,14 @@ var proxyCmd = cli.Command{
 			Name:  "map",
 			Usage: "port map inside and outside namespace,format inside_port:outside_port, eg. -map 443:80443",
 		},
+		&cli.StringFlag{
+			Name:  "conf",
+			Usage: "global config file path, default is" + config.DefaultConfPath,
+		},
+		&cli.StringFlag{
+			Name:  "name",
+			Usage: "default instance name, default is openwrt",
+		},
 	},
 	Action: proxyAction,
 }
@@ -42,6 +50,10 @@ var proxyCmd = cli.Command{
 func proxyAction(ctx *cli.Context) error {
 	mapsList := ctx.StringSlice("map")
 	portMaps := make(map[string]string)
+	pid, err := utils.GetInstancesPid(ctx.String("conf"), ctx.String("name"))
+	if err != nil {
+		return fmt.Errorf("get instance pid error: %v", err)
+	}
 	if len(mapsList) == 0 {
 		mapsList = append(mapsList, []string{"80:80", "443:443"}...)
 	}
@@ -64,15 +76,7 @@ func proxyAction(ctx *cli.Context) error {
 	sort.Strings(portMapsKeys)
 
 	if os.Getenv("NSLIST") == "" {
-		pidfile := config.DefaultWrtxRunPidFile
-		buf, err := os.ReadFile(pidfile)
-		if err != nil {
-			return fmt.Errorf("read file %s error: %v", pidfile, err)
-		}
-		pid, err := strconv.Atoi(string(buf))
-		if err != nil {
-			return fmt.Errorf("covert %s to int error", string(buf))
-		}
+
 		cmd := exec.Command("/proc/self/exe", os.Args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout

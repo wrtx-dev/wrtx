@@ -7,17 +7,27 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
-	"wrtx/internal/config"
+	"wrtx/internal/utils"
 
 	"github.com/urfave/cli/v2"
 )
 
 var execCmd = cli.Command{
-	Name:   "exec",
-	Usage:  "execute a command in openwrt",
+	Name:      "exec",
+	Usage:     "execute a command in instance",
+	ArgsUsage: "command [args...]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "name",
+			Usage: "instance name",
+		},
+		&cli.StringFlag{
+			Name:  "conf",
+			Usage: "config file path",
+		},
+	},
 	Action: execAction,
 }
 
@@ -29,19 +39,14 @@ func init() {
 	// fmt.Println("os.args:", os.Args)
 }
 func execAction(ctx *cli.Context) error {
-	// runtime.GOMAXPROCS(1)
-	// runtime.LockOSThread()
 	args := ctx.Args().Slice()
 	// fmt.Println("args:", args)
 	if os.Getenv("NSLIST") == "" {
-		pidfile := config.DefaultWrtxRunPidFile
-		buf, err := os.ReadFile(pidfile)
+		instanceName := ctx.String("name")
+		globalConf := ctx.String("conf")
+		pid, err := utils.GetInstancesPid(globalConf, instanceName)
 		if err != nil {
-			return fmt.Errorf("read file %s error: %v", pidfile, err)
-		}
-		pid, err := strconv.Atoi(string(buf))
-		if err != nil {
-			return fmt.Errorf("covert %s to int error", string(buf))
+			return fmt.Errorf("get instance pid error: %v", err)
 		}
 
 		fp, err := os.Open(fmt.Sprintf("/proc/%d/environ", pid))
