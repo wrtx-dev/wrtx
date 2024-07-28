@@ -48,7 +48,7 @@ func NewMacvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
 	return macvlan, errors.WithMessagef(err, "add dev %s error", name)
 }
 
-func NewIPvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
+func NewIPvlanDev(name, parent string) (netlink.Link, error) {
 	if _, err := netlink.LinkByName(name); err == nil {
 		return nil, fmt.Errorf("dev %s existed", name)
 	}
@@ -57,17 +57,11 @@ func NewIPvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.WithMessagef(err, "get dev: %s error", parent)
 	}
-	mac, err := net.ParseMAC(hardwardAddr)
-	if err != nil {
-		return nil, errors.WithMessagef(err, "parse mac: %s error", hardwardAddr)
-	}
-	fmt.Printf("set ipvlan dev: %s mac: %s\n", name, hardwardAddr)
+
 	ipVlan := &netlink.IPVlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        name,
 			ParentIndex: dev.Attrs().Index,
-			//TODO: change mac address didn't work,fix it later
-			HardwareAddr: mac,
 		},
 		Mode: netlink.IPVLAN_MODE_L2,
 		Flag: netlink.IPVLAN_FLAG_BRIDGE,

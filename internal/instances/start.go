@@ -70,7 +70,7 @@ func StartInstance(conf *config.WrtxConfig) error {
 	}
 	// fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
 	if conf.NicType == "ipvlan" {
-		_, err = network.NewIPvlanDev(conf.NetDevName, conf.PhyDevName, conf.HardwareAddr)
+		_, err = network.NewIPvlanDev(conf.NetDevName, conf.PhyDevName)
 		if err != nil {
 			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
 			return err
