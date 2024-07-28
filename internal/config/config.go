@@ -28,6 +28,7 @@ type GlobalConfig struct {
 }
 type WrtxConfig struct {
 	ResLimit       bool              `json:"res_limit"`
+	HardwareAddr   string            `json:"hardware_addr"`
 	NetDevName     string            `json:"net_dev_name"`
 	PhyDevName     string            `json:"phy_dev_name"`
 	ImgPath        string            `json:"image_path"`

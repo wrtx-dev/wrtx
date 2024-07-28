@@ -8,6 +8,7 @@ import (
 	"wrtx/internal/config"
 	"wrtx/internal/instances"
 	"wrtx/internal/netconf"
+	"wrtx/package/network"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -202,6 +203,7 @@ func runWrt(ctx *cli.Context) error {
 	}
 	conf.NetDevName = netDevName
 	conf.PhyDevName = phy
+	conf.HardwareAddr = network.GenRandMac()
 	if configNetwork {
 		netconfPath := fmt.Sprintf("%s/network", conf.Instances)
 		if _, err := os.Stat(netconfPath); err != nil {

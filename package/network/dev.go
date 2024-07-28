@@ -2,9 +2,12 @@ package network
 
 import (
 	"fmt"
+	"math/rand"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
@@ -16,7 +19,11 @@ const (
 	typeName = 2
 )
 
-func NewMacvlanDev(name, parent string) (netlink.Link, error) {
+func GenRandMac() string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return fmt.Sprintf("02:%02x:%02x:%0x:%02x:%02x", r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255))
+}
+func NewMacvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
 	if _, err := netlink.LinkByName(name); err == nil {
 		return nil, fmt.Errorf("dev %s existed", name)
 	}
@@ -25,19 +32,23 @@ func NewMacvlanDev(name, parent string) (netlink.Link, error) {
 		return nil, errors.WithMessagef(err, "get dev: %v error", parent)
 	}
 
-	la := netlink.NewLinkAttrs()
-	la.Name = name
-	la.ParentIndex = dev.Attrs().Index
-
+	mac, err := net.ParseMAC(hardwardAddr)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "parse mac: %s error", hardwardAddr)
+	}
 	macvlan := &netlink.Macvlan{
-		LinkAttrs: la,
-		Mode:      netlink.MACVLAN_MODE_BRIDGE,
+		LinkAttrs: netlink.LinkAttrs{
+			Name:         name,
+			ParentIndex:  dev.Attrs().Index,
+			HardwareAddr: mac,
+		},
+		Mode: netlink.MACVLAN_MODE_BRIDGE,
 	}
 	err = netlink.LinkAdd(macvlan)
 	return macvlan, errors.WithMessagef(err, "add dev %s error", name)
 }
 
-func NewIPvlanDev(name, parent string) (netlink.Link, error) {
+func NewIPvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
 	if _, err := netlink.LinkByName(name); err == nil {
 		return nil, fmt.Errorf("dev %s existed", name)
 	}
@@ -46,13 +57,20 @@ func NewIPvlanDev(name, parent string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.WithMessagef(err, "get dev: %s error", parent)
 	}
-	la := netlink.NewLinkAttrs()
-	la.Name = name
-	la.ParentIndex = dev.Attrs().Index
+	mac, err := net.ParseMAC(hardwardAddr)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "parse mac: %s error", hardwardAddr)
+	}
+	fmt.Printf("set ipvlan dev: %s mac: %s\n", name, hardwardAddr)
 	ipVlan := &netlink.IPVlan{
-		LinkAttrs: la,
-		Mode:      netlink.IPVLAN_MODE_L2,
-		Flag:      netlink.IPVLAN_FLAG_BRIDGE,
+		LinkAttrs: netlink.LinkAttrs{
+			Name:        name,
+			ParentIndex: dev.Attrs().Index,
+			//TODO: change mac address didn't work,fix it later
+			HardwareAddr: mac,
+		},
+		Mode: netlink.IPVLAN_MODE_L2,
+		Flag: netlink.IPVLAN_FLAG_BRIDGE,
 	}
 	return ipVlan, netlink.LinkAdd(ipVlan)
 }
@@ -148,6 +166,8 @@ func enterNamespaceWithOutter(dev *netlink.Link, name string, spaceType int) (fn
 		return nil, err
 	}
 	fn = func() {
+		defer originNs.Close()
+		defer handler.Close()
 		netns.Set(originNs)
 		runtime.UnlockOSThread()
 	}
