@@ -39,7 +39,7 @@ jobs:
 
       - name: make .config file
         run: |
-          cp x86_64-config openwrt/.config
+          cp .config/x86_64-config openwrt/.config
           cd openwrt
           bash ./scripts/diffconfig.sh .config > diffconfig
           mv diffconfig .config
@@ -130,7 +130,7 @@ jobs:
 
       - name: make config file
         run: |
-          cp immortalwrt_x86_config ImmortalWrt/.config
+          cp .config/immortalwrt_x86_config ImmortalWrt/.config
           cd ImmortalWrt
           bash ./scripts/diffconfig.sh .config > diffconfig
           mv diffconfig .config
