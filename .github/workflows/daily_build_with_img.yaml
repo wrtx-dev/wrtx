@@ -4,6 +4,9 @@ name:
 on:
   schedule:
     - cron: '20 18 * * *'
+  push:
+    - main
+    - tag: v*
 
 jobs:
   build-openwrt:
@@ -25,9 +28,21 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: clone openwrt
-        run: bash clone_openwrt.sh master
+        id: clone
+        run: |
+          git init
+          git remote add origin https://git.openwrt.org/openwrt/openwrt.git
+          git fetch origin ${commit_id}
+          git reset --hard FETCH_HEAD
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: set feeds
+        if: steps.clone.outputs.status == 'success' && !cancelled()
+        run: |
+          echo -e "src-git passwalldep https://github.com/xiaorouji/openwrt-passwall-packages.git \nsrc-git passwall https://github.com/xiaorouji/openwrt-passwall2.git" >> feeds.conf.default
       
       - name: update feeds
+        
         run: |
           cd openwrt
           ./scripts/feeds update -a
