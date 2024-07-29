@@ -3,7 +3,7 @@ name:
 
 on:
   schedule:
-    - cron: '20 18 * * *'
+    - cron: '05 13 * * *'
   push:
     branches:
       - main
