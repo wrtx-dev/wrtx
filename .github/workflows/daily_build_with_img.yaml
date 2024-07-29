@@ -32,6 +32,8 @@ jobs:
       - name: clone openwrt
         id: clone
         run: |
+          mkdir openwrt
+          cd openwrt
           git init
           git remote add origin https://git.openwrt.org/openwrt/openwrt.git
           git fetch origin ${commit_id}
