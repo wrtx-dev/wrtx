@@ -148,6 +148,9 @@ func proxyPort(l *net.Listener, port string) {
 		conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%s", dstPort))
 		if err != nil {
 			fmt.Printf("connect to openwrt's webui error: %v\n", err)
+			c.Close()
+			continue
+
 		}
 		go dataCopy(c, conn)
 	}
