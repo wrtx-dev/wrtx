@@ -5,8 +5,10 @@ on:
   schedule:
     - cron: '20 18 * * *'
   push:
-    - main
-    - tag: v*
+    branches:
+      - main
+  tag:
+      - v*
 
 jobs:
   build-openwrt:
