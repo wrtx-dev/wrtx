@@ -36,7 +36,6 @@ type WrtxConfig struct {
 	WorkDir        string            `json:"work_dir"`
 	MergeDir       string            `json:"merge_dir"`
 	UpperDir       string            `json:"upper_dir"`
-	VirtualNicType string            `json:"virtual_nic_type"`
 	NetConfigFile  string            `json:"net_config_file"`
 	Cpus           int               `json:"cpus"`
 	Mem            int               `json:"mem"`
