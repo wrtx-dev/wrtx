@@ -27,23 +27,24 @@ type GlobalConfig struct {
 	DefaultInstanceName string `json:"default_instance_name"`
 }
 type WrtxConfig struct {
-	ResLimit       bool              `json:"res_limit"`
-	HardwareAddr   string            `json:"hardware_addr"`
-	NetDevName     string            `json:"net_dev_name"`
-	PhyDevName     string            `json:"phy_dev_name"`
-	ImgPath        string            `json:"image_path"`
-	Instances      string            `json:"instances"`
-	WorkDir        string            `json:"work_dir"`
-	MergeDir       string            `json:"merge_dir"`
-	UpperDir       string            `json:"upper_dir"`
-	NetConfigFile  string            `json:"net_config_file"`
-	Cpus           int               `json:"cpus"`
-	Mem            int               `json:"mem"`
-	Period         int               `json:"period"`
-	ConfigNetwork  bool              `json:"config_network"`
-	NicType        string            `json:"nic_type"`
-	MountMap       map[string]string `json:"mount_map"`
-	StatusFile     string            `json:"status_file"`
+	InstanceName  string            `json:"instance_name"`
+	ResLimit      bool              `json:"res_limit"`
+	HardwareAddr  string            `json:"hardware_addr"`
+	NetDevName    string            `json:"net_dev_name"`
+	PhyDevName    string            `json:"phy_dev_name"`
+	ImgPath       string            `json:"image_path"`
+	Instances     string            `json:"instances"`
+	WorkDir       string            `json:"work_dir"`
+	MergeDir      string            `json:"merge_dir"`
+	UpperDir      string            `json:"upper_dir"`
+	NetConfigFile string            `json:"net_config_file"`
+	Cpus          int               `json:"cpus"`
+	Mem           int               `json:"mem"`
+	Period        int               `json:"period"`
+	ConfigNetwork bool              `json:"config_network"`
+	NicType       string            `json:"nic_type"`
+	MountMap      map[string]string `json:"mount_map"`
+	StatusFile    string            `json:"status_file"`
 }
 
 func (gc *GlobalConfig) Load(path string) error {

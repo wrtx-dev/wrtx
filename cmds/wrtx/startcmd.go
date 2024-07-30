@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"wrtx/internal/agent"
 	"wrtx/internal/config"
-	"wrtx/internal/instances"
 
 	"github.com/urfave/cli/v2"
 )
@@ -44,27 +44,6 @@ func start(ctx *cli.Context) error {
 	if name == "" {
 		name = "openwrt"
 	}
+	return agent.StartWrtxInstance(fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
 
-	conf, err := loadInstanceConfig(fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(conf.StatusFile); err == nil {
-		return fmt.Errorf("instance %s is already running", name)
-	}
-	return instances.StartInstance(conf)
-}
-
-func loadInstanceConfig(confPath string) (*config.WrtxConfig, error) {
-	conf := config.WrtxConfig{}
-	if _, err := os.Stat(confPath); err != nil {
-		if os.IsNotExist(err) {
-			return &conf, err
-		}
-		return &conf, fmt.Errorf("load config file: %s error: %v", confPath, err)
-	}
-	if err := conf.Load(confPath); err != nil {
-		return nil, fmt.Errorf("load config file: %s error: %v", confPath, err)
-	}
-	return &conf, nil
 }

@@ -28,6 +28,7 @@ type pidMsg struct {
 func StartInstance(conf *config.WrtxConfig) error {
 
 	status := NewStatus()
+	alwaryRestart := false
 
 	if err := mountRootfs(*conf); err != nil {
 		fmt.Println(err.Error())
@@ -38,6 +39,43 @@ func StartInstance(conf *config.WrtxConfig) error {
 			return fmt.Errorf("set res limit error: %v", err)
 		}
 	}
+	os.Args[0] = "wrtxd"
+	var err error
+	for {
+
+		err = execInstance(conf, status)
+		if err == nil {
+			status.Dump(conf.StatusFile)
+		}
+		// if !backgroud {
+		// 	pid, err := daemon.Daemon()
+		// 	if err != nil {
+		// 		break
+		// 	}
+
+		// 	if pid != 0 {
+		// 		fmt.Println("pid=", pid)
+		// 		break
+		// 	}
+		// 	backgroud = true
+		// }
+		var stat syscall.WaitStatus
+		for {
+			fmt.Println("wait child:", status.PID, "exit")
+			syscall.Wait4(status.PID, &stat, 0, nil)
+			if stat.Exited() {
+				fmt.Printf("child pid:%d exit, status:%d\n", status.PID, stat.ExitStatus())
+				break
+			}
+		}
+		if !alwaryRestart {
+			break
+		}
+	}
+	return err
+}
+
+func execInstance(conf *config.WrtxConfig, status *Status) error {
 	cmd := exec.Command("/proc/self/exe", "init")
 
 	rootDir := conf.MergeDir
@@ -68,6 +106,9 @@ func StartInstance(conf *config.WrtxConfig) error {
 	if err != nil {
 		return fmt.Errorf("wait error: %v", err)
 	}
+	go func() {
+		syscall.Wait4(jsMsg.ChildPID, nil, 0, nil)
+	}()
 	// fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
 	if conf.NicType == "ipvlan" {
 		_, err = network.NewIPvlanDev(conf.NetDevName, conf.PhyDevName)
@@ -87,46 +128,13 @@ func StartInstance(conf *config.WrtxConfig) error {
 		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
 		return err
 	}
-	nsPath := fmt.Sprintf("/proc/%d/ns/", jsMsg.GrandChildPid)
 	var nsfiles = [...]string{"ipc", "net", "pid", "uts", "cgroup"}
 	savedNSPath := fmt.Sprintf("%s/ns", conf.Instances)
-	if stat, err := os.Stat(savedNSPath); err == nil {
-		if !stat.IsDir() {
-			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
-			return fmt.Errorf("%s isn't a dir", savedNSPath)
-		}
-	} else {
-		if !os.IsNotExist(err) {
-			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
-			return fmt.Errorf("%s is exist but check it error: %v", savedNSPath, err)
-		}
-		err = os.Mkdir(savedNSPath, os.ModePerm)
-		if err != nil {
-			syscall.Kill(jsMsg.GrandChildPid, syscall.SIGTERM)
-			return fmt.Errorf("create dir %s error: %v", savedNSPath, err)
-		}
+	if err := saveNameSpaces(jsMsg.GrandChildPid, nsfiles[:], savedNSPath); err != nil {
+		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
+		return fmt.Errorf("save namespace error: %v", err)
 	}
 
-	for _, nsfile := range nsfiles {
-		nsfilePath := fmt.Sprintf("%s/%s", nsPath, nsfile)
-		savedNSFilePath := fmt.Sprintf("%s/%s", savedNSPath, nsfile)
-		if _, err := os.Stat(savedNSFilePath); err != nil {
-			if os.IsNotExist(err) {
-				fmt.Println("create file:", savedNSFilePath)
-				fp, err := os.Create(savedNSFilePath)
-				if err != nil {
-					fmt.Println("create file", savedNSFilePath, " err: ", err)
-					continue
-				}
-				fp.Close()
-			}
-		}
-		err = fsMount.MountBind(savedNSFilePath, nsfilePath)
-		if err != nil {
-			fmt.Printf("save namespace: %s to %s error: %v\n", nsfilePath, savedNSFilePath, err)
-		}
-
-	}
 	cw.Write([]byte("continue"))
 	status.PID = jsMsg.GrandChildPid
 	status.Status = "Running"
@@ -208,16 +216,43 @@ func timeHashString() string {
 	return fmt.Sprintf("%x", sum)[:8]
 }
 
-// func loadInstanceConfig(confPath string) (*config.WrtxConfig, error) {
-// 	conf := config.WrtxConfig{}
-// 	if _, err := os.Stat(confPath); err != nil {
-// 		if os.IsNotExist(err) {
-// 			return &conf, err
-// 		}
-// 		return &conf, fmt.Errorf("load config file: %s error: %v", confPath, err)
-// 	}
-// 	return &conf, nil
-// }
+func saveNameSpaces(pid int, nsList []string, savedNSPath string) error {
+	nsPath := fmt.Sprintf("/proc/%d/ns/", pid)
+	if stat, err := os.Stat(savedNSPath); err == nil {
+		if !stat.IsDir() {
+			return fmt.Errorf("%s isn't a dir", savedNSPath)
+		}
+	} else {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("%s is exist but check it error: %v", savedNSPath, err)
+		}
+		err = os.Mkdir(savedNSPath, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("create dir %s error: %v", savedNSPath, err)
+		}
+	}
+	for _, nsfile := range nsList {
+		nsfilePath := fmt.Sprintf("%s/%s", nsPath, nsfile)
+		savedNSFilePath := fmt.Sprintf("%s/%s", savedNSPath, nsfile)
+		if _, err := os.Stat(savedNSFilePath); err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("create file:", savedNSFilePath)
+				fp, err := os.Create(savedNSFilePath)
+				if err != nil {
+					fmt.Println("create file", savedNSFilePath, " err: ", err)
+					continue
+				}
+				fp.Close()
+			}
+		}
+		err := fsMount.MountBind(savedNSFilePath, nsfilePath)
+		if err != nil {
+			fmt.Printf("save namespace: %s to %s error: %v\n", nsfilePath, savedNSFilePath, err)
+		}
+
+	}
+	return nil
+}
 
 func setResLimit(conf *config.WrtxConfig, status *Status) error {
 	cg, err := simplecgroup.GetCgroupType()

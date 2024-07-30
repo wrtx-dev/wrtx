@@ -5,8 +5,8 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"wrtx/internal/agent"
 	"wrtx/internal/config"
-	"wrtx/internal/instances"
 	"wrtx/internal/netconf"
 	"wrtx/package/network"
 
@@ -231,7 +231,7 @@ func runWrt(ctx *cli.Context) error {
 	if err := conf.Dumps(confPath); err != nil {
 		return fmt.Errorf("create new instance error: %v", err)
 	}
-	return instances.StartInstance(conf)
+	return agent.StartWrtxInstance(confPath)
 	// return nil
 }
 

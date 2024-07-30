@@ -21,6 +21,7 @@ func (s *Status) Dump(path string) error {
 	if err != nil {
 		return fmt.Errorf("open file %s err: %v", path, err)
 	}
+	defer fp.Close()
 	jsonStr, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("marshal conf json str error: %v", err)
