@@ -67,6 +67,11 @@ var runcmd = cli.Command{
 			Name:  "dns",
 			Usage: "set dns, eg.: 8.8.8.8",
 		},
+		&cli.BoolFlag{
+			Name:  "always",
+			Usage: "if need always restart instance",
+			Value: false,
+		},
 	},
 	Action: runWrt,
 }
@@ -81,6 +86,8 @@ func runWrt(ctx *cli.Context) error {
 	mem := ctx.String("mem")
 	phy := ctx.String("phy")
 	netDevName := ctx.String("veth")
+
+	always := ctx.Bool("always")
 
 	ip := ctx.String("ip")
 	mask := ctx.String("mask")
@@ -122,6 +129,7 @@ func runWrt(ctx *cli.Context) error {
 	confPath := fmt.Sprintf("%s/config.json", instancePath)
 	conf := config.NewConf()
 	conf.Instances = instancePath
+	conf.AlwaysRestart = always
 	period := 0
 	memory := 0
 	cpus := 0

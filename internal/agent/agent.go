@@ -14,9 +14,13 @@ func StartWrtxInstance(confFile string) error {
 		return err
 	}
 	cmd := exec.Cmd{
-		Path:        "/proc/self/exe",
-		Args:        []string{"wrtxd", "agent", "--config", confFile},
-		SysProcAttr: &syscall.SysProcAttr{Setsid: true},
+		Path: "/proc/self/exe",
+		Args: []string{"wrtxd", "agent", "--config", confFile},
+		SysProcAttr: &syscall.SysProcAttr{
+			Setsid: true,
+		},
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
 	}
 	return cmd.Start()
 }

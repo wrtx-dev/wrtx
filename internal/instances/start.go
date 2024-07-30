@@ -7,9 +7,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
 	"time"
 	"wrtx/internal/config"
+	"wrtx/internal/terminate"
 	fsMount "wrtx/package/mount"
 	"wrtx/package/network"
 	"wrtx/package/simplecgroup"
@@ -28,7 +30,6 @@ type pidMsg struct {
 func StartInstance(conf *config.WrtxConfig) error {
 
 	status := NewStatus()
-	alwaryRestart := false
 
 	if err := mountRootfs(*conf); err != nil {
 		fmt.Println(err.Error())
@@ -39,7 +40,22 @@ func StartInstance(conf *config.WrtxConfig) error {
 			return fmt.Errorf("set res limit error: %v", err)
 		}
 	}
-	os.Args[0] = "wrtxd"
+	return wrtxdLoop(conf, status)
+}
+
+func wrtxdLoop(conf *config.WrtxConfig, status *Status) error {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT, syscall.SIGABRT)
+	needRestart := conf.AlwaysRestart
+	exitProc := false
+	go func() {
+		<-sig
+		needRestart = false
+		_ = terminate.TerminateCmd(status.PID)
+		exitProc = true
+
+	}()
+
 	var err error
 	for {
 
@@ -47,18 +63,6 @@ func StartInstance(conf *config.WrtxConfig) error {
 		if err == nil {
 			status.Dump(conf.StatusFile)
 		}
-		// if !backgroud {
-		// 	pid, err := daemon.Daemon()
-		// 	if err != nil {
-		// 		break
-		// 	}
-
-		// 	if pid != 0 {
-		// 		fmt.Println("pid=", pid)
-		// 		break
-		// 	}
-		// 	backgroud = true
-		// }
 		var stat syscall.WaitStatus
 		for {
 			fmt.Println("wait child:", status.PID, "exit")
@@ -68,7 +72,12 @@ func StartInstance(conf *config.WrtxConfig) error {
 				break
 			}
 		}
-		if !alwaryRestart {
+		releaseNameSpaces(conf)
+		if !needRestart || exitProc {
+			if conf.ResLimit {
+				RemoveCgroupSubDirs(status.CgroupPath)
+			}
+			cleanup(conf)
 			break
 		}
 	}
@@ -77,6 +86,8 @@ func StartInstance(conf *config.WrtxConfig) error {
 
 func execInstance(conf *config.WrtxConfig, status *Status) error {
 	cmd := exec.Command("/proc/self/exe", "init")
+
+	status.AgentPid = os.Getpid()
 
 	rootDir := conf.MergeDir
 
@@ -106,9 +117,6 @@ func execInstance(conf *config.WrtxConfig, status *Status) error {
 	if err != nil {
 		return fmt.Errorf("wait error: %v", err)
 	}
-	go func() {
-		syscall.Wait4(jsMsg.ChildPID, nil, 0, nil)
-	}()
 	// fmt.Println("child pid:", jsMsg.ChildPID, "exit, wpid:", wpid)
 	if conf.NicType == "ipvlan" {
 		_, err = network.NewIPvlanDev(conf.NetDevName, conf.PhyDevName)
@@ -128,9 +136,8 @@ func execInstance(conf *config.WrtxConfig, status *Status) error {
 		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
 		return err
 	}
-	var nsfiles = [...]string{"ipc", "net", "pid", "uts", "cgroup"}
 	savedNSPath := fmt.Sprintf("%s/ns", conf.Instances)
-	if err := saveNameSpaces(jsMsg.GrandChildPid, nsfiles[:], savedNSPath); err != nil {
+	if err := saveNameSpaces(jsMsg.GrandChildPid, config.GetNsFilesName(), savedNSPath); err != nil {
 		syscall.Kill(jsMsg.GrandChildPid, syscall.SIGKILL)
 		return fmt.Errorf("save namespace error: %v", err)
 	}
@@ -207,6 +214,9 @@ func NewProcess(cmd *exec.Cmd, rootDir string) ([2]int, *os.File, *os.File, erro
 	if err := cmd.Start(); err != nil {
 		return r, cr, cw, fmt.Errorf("start cmd err: %s", err)
 	}
+	go func() {
+		syscall.Wait4(cmd.Process.Pid, nil, 0, nil)
+	}()
 	return r, cr, cw, nil
 }
 
@@ -278,4 +288,11 @@ func setResLimit(conf *config.WrtxConfig, status *Status) error {
 		}
 	}
 	return nil
+}
+
+func releaseNameSpaces(conf *config.WrtxConfig) {
+	savePath := fmt.Sprintf("%s/ns", conf.Instances)
+	for _, ns := range config.GetNsFilesName() {
+		fsMount.Unmount(fmt.Sprintf("%s/%s", savePath, ns))
+	}
 }

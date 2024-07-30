@@ -45,3 +45,7 @@ func MountTMP() error {
 	return syscall.Mount("tmpfs", "/tmp", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=777")
 
 }
+
+func Unmount(target string) error {
+	return syscall.Unmount(target, 0)
+}

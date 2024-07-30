@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -14,6 +15,7 @@ type Status struct {
 	CgroupPath string `json:"cgroup_path"`
 	PID        int    `json:"pid"`
 	Status     string `json:"status"`
+	AgentPid   int    `json:"agent_pid"`
 }
 
 func (s *Status) Dump(path string) error {
@@ -60,4 +62,27 @@ func (s *Status) Pid() int {
 
 func (s *Status) Cgroup() string {
 	return s.CgroupPath
+}
+
+func RemoveCgroupSubDirs(path string) {
+	items, err := os.ReadDir(path)
+	if err != nil {
+		fmt.Println("read cgroup's dir:", path, "err:", err)
+		return
+	}
+	for _, item := range items {
+		if !item.IsDir() {
+			continue
+		}
+		tpath := fmt.Sprintf("%s/%s", path, item.Name())
+		RemoveCgroupSubDirs(tpath)
+	}
+	err = os.Remove(path)
+	if err != nil {
+		time.Sleep(time.Second * 2)
+		err = os.Remove(path)
+		if err != nil {
+			fmt.Println("remove", path, "err:", err)
+		}
+	}
 }

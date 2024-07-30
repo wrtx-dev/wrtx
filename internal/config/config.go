@@ -45,8 +45,12 @@ type WrtxConfig struct {
 	NicType       string            `json:"nic_type"`
 	MountMap      map[string]string `json:"mount_map"`
 	StatusFile    string            `json:"status_file"`
+	AlwaysRestart bool              `json:"always_restart"`
 }
 
+func GetNsFilesName() []string {
+	return []string{"ipc", "net", "pid", "uts", "cgroup"}
+}
 func (gc *GlobalConfig) Load(path string) error {
 	jsonStr, err := os.ReadFile(path)
 	if err != nil {
