@@ -243,11 +243,32 @@ jobs:
         id: pack
         if: steps.unpack_openwrt.outputs.status == 'success' && steps.unpack_immortal.outputs.status == 'success' && !cancelled()
         run: |
-          bash pack_deb.sh $(pwd)/openwrt_rootfs $(pwd)/immortal_rootfs ${{ env.WRTX_BIN }} ${{ env.WRTX_VERSION }}
-          echo "status=success" >> $GITHUB_OUTPUT
-          echo "DEB_PACKAGE=$(ls *.deb)" >> $GITHUB_ENV
-          echo "status=success" 
-          echo "DEB_PACKAGE=$(ls *.deb)" 
+          mkdir deb
+          mkdir -pv deb/DEBIAN
+          mkdir -pv deb/usr/local/wrtx/bin
+          mkdir -pv deb/usr/local/wrtx/conf
+          mkdir -pv deb/usr/local/wrtx/run
+          mkdir -pv deb/usr/local/wrtx/instances
+          mv -v openwrt_rootfs deb/usr/local/wrtx/instances/openwrt
+          mv -v immortal_rootfs deb/usr/local/wrtx/instances/immortal
+          cp -v script/postinst deb/DEBIAN
+          cp -v script/postrm deb/DEBIAN
+          cp -v wrtx deb/usr/local/wrtx/bin/
+          echo "Package: wrtX" >>deb/DEBIAN/control
+          echo "Version: $(cat VERSION)" >>deb/DEBIAN/control
+          echo "Architecture: $([[ $(uname -p) = 'x86_64' ]] && echo amd64 )" >>deb/DEBIAN/control
+          echo "Maintainer: wrtX.dev <wrtx.dev@outlook.com>" >>deb/DEBIAN/control
+          echo "Installed-Size:" >>deb/DEBIAN/control
+          echo "Pre-Depends:" >>deb/DEBIAN/control
+          echo "Depends:" >>deb/DEBIAN/control
+          echo "Recommends:" >>deb/DEBIAN/control
+          echo "Suggests:" >>deb/DEBIAN/control
+          echo "Section: devel" >>deb/DEBIAN/control
+          echo "Priority: optional" >>deb/DEBIAN/control
+          echo "Multi-Arch: foreign" >>deb/DEBIAN/control
+          echo "Homepage: wrtx.dev" >>deb/DEBIAN/control
+          echo "Description: run openwrt in simple namespace." >>deb/DEBIAN/control
+          dpkg -b deb wrtx-$([[ $(uname -p) = 'x86_64' ]] && echo amd64)-$(cat VERSION).deb
 
       - name: artifact
         uses: actions/upload-artifact@v4
