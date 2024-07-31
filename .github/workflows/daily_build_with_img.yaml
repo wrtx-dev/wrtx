@@ -242,6 +242,8 @@ jobs:
           mkdir -pv deb/usr/local/wrtx/instances
           mv -v openwrt_rootfs deb/usr/local/wrtx/instances/openwrt
           mv -v immortal_rootfs deb/usr/local/wrtx/instances/immortal
+          chmod 0775 script/postinst
+          chmod 0775 script/postrm
           cp -v script/postinst deb/DEBIAN
           cp -v script/postrm deb/DEBIAN
           cp -v ${{ env.WRTX_BIN }} deb/usr/local/wrtx/bin/
