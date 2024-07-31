@@ -194,18 +194,9 @@ jobs:
         with:
           go-version: 1.22.3
 
-      - name: clone wrtx
-        run: |
-          mkdir wrtx
-          cd wrtx
-          git init
-          git remote add origin https://github.com/wrtx-dev/wrtx.git
-          git fetch origin dev
-          git reset --hard FETCH_HEAD
 
       - name: build wrtx
         run: |
-          cd wrtx
           make modupdate 
           make 
           echo "WRTX_BIN=$(pwd)/wrtx" >> $GITHUB_ENV 
@@ -253,9 +244,9 @@ jobs:
           mv -v immortal_rootfs deb/usr/local/wrtx/instances/immortal
           cp -v script/postinst deb/DEBIAN
           cp -v script/postrm deb/DEBIAN
-          cp -v wrtx deb/usr/local/wrtx/bin/
+          cp -v ${{ env.WRTX_BIN }} deb/usr/local/wrtx/bin/
           echo "Package: wrtX" >>deb/DEBIAN/control
-          echo "Version: $(cat VERSION)" >>deb/DEBIAN/control
+          echo "Version: ${{ env.WRTX_VERSION }}" >>deb/DEBIAN/control
           echo "Architecture: $([[ $(uname -p) = 'x86_64' ]] && echo amd64 )" >>deb/DEBIAN/control
           echo "Maintainer: wrtX.dev <wrtx.dev@outlook.com>" >>deb/DEBIAN/control
           echo "Installed-Size:" >>deb/DEBIAN/control
