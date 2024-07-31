@@ -19,8 +19,8 @@ func StartWrtxInstance(confFile string) error {
 		SysProcAttr: &syscall.SysProcAttr{
 			Setsid: true,
 		},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		// Stdout: os.Stdout,
+		// Stderr: os.Stderr,
 	}
 	return cmd.Start()
 }

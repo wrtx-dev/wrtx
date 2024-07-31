@@ -8,8 +8,9 @@ import (
 )
 
 var shellCmd = cli.Command{
-	Name:  "shell",
-	Usage: "run openwrt shell, /bin/ash --login",
+	Name:      "shell",
+	Usage:     "run openwrt shell, /bin/ash --login",
+	ArgsUsage: " instance_name",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "conf",
@@ -24,16 +25,16 @@ var shellCmd = cli.Command{
 }
 
 func shellAction(ctx *cli.Context) error {
-	instanceName := ctx.String("name")
+	instanceName := ctx.Args().First()
 	gConf := ctx.String("conf")
 	args := []string{"exec"}
-	if instanceName != "" {
-		args = append(args, "--name", instanceName)
+	if instanceName == "" {
+		instanceName = "openwrt"
 	}
 	if gConf != "" {
 		args = append(args, "--conf", gConf)
 	}
-	args = append(args, []string{"/bin/ash", "--login"}...)
+	args = append(args, []string{instanceName, "/bin/ash", "--login"}...)
 
 	cmd := exec.Command("/proc/self/exe", args...)
 	cmd.Stderr = os.Stderr

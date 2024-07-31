@@ -26,7 +26,7 @@ func main() {
 			&agentCmd,
 		},
 	}
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetFormatter(&logrus.TextFormatter{})
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
 	}

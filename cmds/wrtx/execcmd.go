@@ -17,7 +17,7 @@ import (
 var execCmd = cli.Command{
 	Name:      "exec",
 	Usage:     "execute a command in instance",
-	ArgsUsage: "command [args...]",
+	ArgsUsage: " instance-name command [args...]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "name",
@@ -41,8 +41,11 @@ func init() {
 func execAction(ctx *cli.Context) error {
 	args := ctx.Args().Slice()
 	// fmt.Println("args:", args)
+	if len(args) < 2 {
+		return fmt.Errorf("command is required")
+	}
 	if os.Getenv("NSLIST") == "" {
-		instanceName := ctx.String("name")
+		instanceName := args[0]
 		globalConf := ctx.String("conf")
 		pid, err := utils.GetInstancesPid(globalConf, instanceName)
 		if err != nil {
@@ -86,12 +89,12 @@ func execAction(ctx *cli.Context) error {
 				return fmt.Errorf("set env variable %s value: %s error: %v", envKV[0], envKV[1], err)
 			}
 		}
-		cmdPath, err := exec.LookPath(args[0])
+		cmdPath, err := exec.LookPath(args[1])
 		if err != nil {
 			return fmt.Errorf("looking path for %s error: %v", args[0], err)
 		}
-		if len(args) > 1 {
-			cmd = exec.Command(cmdPath, args[1:]...)
+		if len(args) > 2 {
+			cmd = exec.Command(cmdPath, args[2:]...)
 		} else {
 			cmd = exec.Command(cmdPath)
 		}

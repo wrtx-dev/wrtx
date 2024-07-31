@@ -39,10 +39,6 @@ var proxyCmd = cli.Command{
 			Name:  "conf",
 			Usage: "global config file path, default is" + config.DefaultConfPath,
 		},
-		&cli.StringFlag{
-			Name:  "name",
-			Usage: "default instance name, default is openwrt",
-		},
 	},
 	Action: proxyAction,
 }
@@ -50,7 +46,11 @@ var proxyCmd = cli.Command{
 func proxyAction(ctx *cli.Context) error {
 	mapsList := ctx.StringSlice("map")
 	portMaps := make(map[string]string)
-	pid, err := utils.GetInstancesPid(ctx.String("conf"), ctx.String("name"))
+	name := ""
+	if len(ctx.Args().Slice()) > 0 {
+		name = ctx.Args().First()
+	}
+	pid, err := utils.GetInstancesPid(ctx.String("conf"), name)
 	if err != nil {
 		return fmt.Errorf("get instance pid error: %v", err)
 	}
