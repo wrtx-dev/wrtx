@@ -23,6 +23,14 @@ var importCmd = cli.Command{
 }
 
 func importAction(ctx *cli.Context) error {
+	conf := ctx.String("conf")
+	globalConfig := config.NewGlobalConf()
+	if err := globalConfig.Load(conf); err != nil {
+		return errors.WithMessagef(err, "load config file: %s error", conf)
+	}
+	if globalConfig.ImagePath == "" {
+		globalConfig.ImagePath = config.DefaultImagePath
+	}
 	imagePath := ctx.Args().First()
 	name := ctx.String("name")
 	if name == "" {
@@ -35,7 +43,7 @@ func importAction(ctx *cli.Context) error {
 	} else {
 		return errors.WithMessagef(err, "check path: %s error", imagePath)
 	}
-	savePath := fmt.Sprintf("%s/%s", config.DefaultImagePath, name)
+	savePath := fmt.Sprintf("%s/%s", globalConfig.ImagePath, name)
 	if _, err := os.Stat(savePath); err == nil {
 		return fmt.Errorf("image saved path: %s alreay exist", savePath)
 	}

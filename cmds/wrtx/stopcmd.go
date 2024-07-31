@@ -5,7 +5,6 @@ import (
 	"os"
 	"syscall"
 	"time"
-	"wrtx/internal/config"
 	_ "wrtx/internal/terminate"
 	"wrtx/internal/utils"
 
@@ -16,13 +15,7 @@ var stopCmd = cli.Command{
 	Name:      "stop",
 	Usage:     "stop openwrt in namespace",
 	ArgsUsage: "instance_name",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "conf",
-			Usage: "conf file's path, default: " + config.DefaultConfPath,
-		},
-	},
-	Action: stopWrt,
+	Action:    stopWrt,
 }
 
 func stopWrt(ctx *cli.Context) error {

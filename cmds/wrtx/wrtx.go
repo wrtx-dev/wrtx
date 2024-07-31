@@ -15,6 +15,13 @@ func main() {
 	app := cli.App{
 		Name:  "wrtx",
 		Usage: fmt.Sprintf("Run openwrt quickly and easily in linux namespaces, version: %s", WrtxVersion),
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "conf",
+				Usage:   "config file path",
+				EnvVars: []string{"WRTX_CONFIG"},
+			},
+		},
 		Commands: []*cli.Command{
 			&runcmd,
 			&importCmd,
@@ -24,6 +31,7 @@ func main() {
 			&proxyCmd,
 			&startCmd,
 			&agentCmd,
+			&rmImageCmd,
 		},
 	}
 	logrus.SetFormatter(&logrus.TextFormatter{})

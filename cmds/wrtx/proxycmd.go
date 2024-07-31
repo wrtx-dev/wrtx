@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"syscall"
-	"wrtx/internal/config"
 	"wrtx/internal/utils"
 
 	"github.com/urfave/cli/v2"
@@ -34,10 +33,6 @@ var proxyCmd = cli.Command{
 		&cli.StringSliceFlag{
 			Name:  "map",
 			Usage: "port map inside and outside namespace,format inside_port:outside_port, eg. -map 443:80443",
-		},
-		&cli.StringFlag{
-			Name:  "conf",
-			Usage: "global config file path, default is" + config.DefaultConfPath,
 		},
 	},
 	Action: proxyAction,

@@ -29,10 +29,6 @@ var runcmd = cli.Command{
 			Usage: "virtual net dev name",
 		},
 		&cli.StringFlag{
-			Name:  "conf",
-			Usage: "conf file's path, default: " + config.DefaultConfPath,
-		},
-		&cli.StringFlag{
 			Name:  "vtype",
 			Usage: "virtual nic dev's type, Only Support: ipvlan macvlan, default macvla, eg.: ipvlan",
 		},
@@ -209,6 +205,7 @@ func runWrt(ctx *cli.Context) error {
 	conf.MergeDir = conf.Instances + "/merge"
 	conf.NicType = nictype
 	conf.ImgPath = fmt.Sprintf("%s/%s", globalConfig.ImagePath, imgName)
+	conf.InstanceName = name
 	if err := createInstanceDir(conf); err != nil {
 		return err
 	}

@@ -13,10 +13,6 @@ var shellCmd = cli.Command{
 	ArgsUsage: " instance_name",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "conf",
-			Usage: "global config file path",
-		},
-		&cli.StringFlag{
 			Name:  "name",
 			Usage: "instance name",
 		},

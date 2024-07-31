@@ -13,13 +13,7 @@ var startCmd = cli.Command{
 	Name:      "start",
 	Usage:     "start wrtx's instance",
 	ArgsUsage: "instance name",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "config",
-			Usage: "path to config file",
-		},
-	},
-	Action: start,
+	Action:    start,
 }
 
 func start(ctx *cli.Context) error {

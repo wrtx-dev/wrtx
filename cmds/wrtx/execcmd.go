@@ -23,10 +23,6 @@ var execCmd = cli.Command{
 			Name:  "name",
 			Usage: "instance name",
 		},
-		&cli.StringFlag{
-			Name:  "conf",
-			Usage: "config file path",
-		},
 	},
 	Action: execAction,
 }

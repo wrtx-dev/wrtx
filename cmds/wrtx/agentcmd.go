@@ -14,17 +14,11 @@ var agentCmd = cli.Command{
 	Name:   "agent",
 	Usage:  "run the wrtx agent",
 	Hidden: true,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "config",
-			Usage: "path to the config file",
-		},
-	},
 	Action: agentStart,
 }
 
 func agentStart(ctx *cli.Context) error {
-	confPath := ctx.String("config")
+	confPath := ctx.String("conf")
 
 	conf, err := agent.LoadInstanceConfig(confPath)
 	if err != nil {
