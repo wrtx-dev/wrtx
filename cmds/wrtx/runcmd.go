@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"wrtx/internal/agent"
 	"wrtx/internal/config"
+	"wrtx/internal/instances"
 	"wrtx/internal/netconf"
 	"wrtx/package/network"
 
@@ -186,6 +187,14 @@ func runWrt(ctx *cli.Context) error {
 	}
 	if imgName == "" {
 		imgName = config.DefaultImageName
+	}
+
+	existed, err := instances.CheckImages(globalConfig, imgName)
+	if err != nil {
+		return fmt.Errorf("check images error: %v", err)
+	}
+	if !existed {
+		return fmt.Errorf("image %s not exist", imgName)
 	}
 	if nictype == "" {
 		nictype = "macvlan"
