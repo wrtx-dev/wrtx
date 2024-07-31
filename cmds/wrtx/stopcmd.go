@@ -27,36 +27,36 @@ var stopCmd = cli.Command{
 
 func stopWrt(ctx *cli.Context) error {
 	globalConfPath := ctx.String("conf")
-
-	var instanceName string
-	if len(ctx.Args().Slice()) == 0 {
+	instanceName := ctx.Args().First()
+	if instanceName == "" {
 		instanceName = "openwrt"
-	} else {
-		instanceName = ctx.Args().First()
 	}
+
 	conf, err := utils.GetInstancesConfig(globalConfPath, instanceName)
 	if err != nil {
-		return fmt.Errorf("get instance config error:%v", err)
+		return fmt.Errorf("get instance config error: %v", err)
 	}
 
 	status, err := utils.GetStatusByWrtxConfig(conf)
 	if err != nil {
-		return fmt.Errorf("get status error:%v", err)
+		return fmt.Errorf("get status error: %v", err)
 	}
 
 	pid := status.AgentPid
-	err = syscall.Kill(pid, syscall.SIGTERM)
-	if err != nil {
-		return fmt.Errorf("kill agent error:%v", err)
+	if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
+		return fmt.Errorf("kill agent error: %v", err)
 	}
 
-	fmt.Printf("wait agent eixted, pid: %d", pid)
-	for range 120 {
+	fmt.Printf("wait agent exited, pid: %d", pid)
+	for i := 0; i < 120; i++ {
 		if checkPidExist(pid) {
-			fmt.Printf(".")
+			fmt.Print(".")
 			time.Sleep(1 * time.Second)
+		} else {
+			break
 		}
 	}
+	fmt.Println()
 
 	return nil
 }

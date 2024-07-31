@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"unsafe"
 	"wrtx/internal/config"
 	"wrtx/internal/terminate"
 	fsMount "wrtx/package/mount"
@@ -18,6 +19,7 @@ import (
 	cgroupv2 "wrtx/package/simplecgroup/v2"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 const stdioCount = 3
@@ -28,6 +30,9 @@ type pidMsg struct {
 }
 
 func StartInstance(conf *config.WrtxConfig) error {
+
+	title := append([]byte("wrtxd"), 0)
+	unix.Prctl(unix.PR_SET_NAME, uintptr(unsafe.Pointer(&title[0])), 0, 0, 0)
 
 	status := NewStatus()
 

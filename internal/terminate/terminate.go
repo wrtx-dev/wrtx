@@ -16,8 +16,7 @@ func init() {
 	if len(os.Args) != 2 || os.Args[1] != "terminate" {
 		return
 	}
-	err := stopContainer()
-	if err != nil {
+	if err := stopContainer(); err != nil {
 		fmt.Println("stop openwrt error:", err)
 		os.Exit(-1)
 	}
@@ -33,25 +32,19 @@ func stopContainer() error {
 	}
 	pid, err := strconv.Atoi(pidStr)
 	if err != nil {
-		return fmt.Errorf("covert %s to int error", string(pidStr))
+		return fmt.Errorf("convert %s to int error: %v", pidStr, err)
 	}
 	if checkPidName(1, "/sbin/procd") {
 		syscall.Kill(pid, syscall.SIGTERM)
-		flag := false
-		for range 120 {
-			if !flag {
-				fmt.Printf("waiting pid: %d exit.", pid)
-				flag = true
-			} else {
-				fmt.Print(".")
-			}
+		for i := 0; i < 120; i++ {
+			fmt.Printf("\rwaiting pid: %d exit.", pid)
 			time.Sleep(1 * time.Second)
-			if checkPidExist("1") {
-				continue
+			if !checkPidExist(strconv.Itoa(pid)) {
+				fmt.Println("\npid exited")
+				return nil
 			}
-			fmt.Println()
-			break
 		}
+		fmt.Println("\ntimeout waiting for pid to exit")
 	}
 	return nil
 }
@@ -66,9 +59,11 @@ func checkPidName(pid int, name string) bool {
 	lines := bytes.Split(cmdlines, []byte{0})
 	if len(lines) < 1 {
 		fmt.Printf("get cmd name error, /proc/%d/cmdline did not have enough data", pid)
+		return false
 	}
 	return string(lines[0]) == name
 }
+
 func checkPidExist(pid string) bool {
 	pidDir := fmt.Sprintf("/proc/%s", pid)
 	if _, err := os.Stat(pidDir); err != nil {
@@ -83,6 +78,7 @@ func releaseNetworkDev() {
 	links, err := netlink.LinkList()
 	if err != nil {
 		fmt.Println("get links error:", err)
+		return
 	}
 	for _, link := range links {
 		linkType := strings.ToLower(link.Type())
@@ -93,14 +89,16 @@ func releaseNetworkDev() {
 			}
 			if err := netlink.LinkDel(link); err != nil {
 				fmt.Println("delete link:", link.Attrs().Name, "err:", err)
-				continue
 			}
 		}
-
 	}
 }
 
 func umount() {
-	syscall.Unmount("/proc", 0)
-	syscall.Unmount("/sys", 0)
+	if err := syscall.Unmount("/proc", 0); err != nil {
+		fmt.Println("unmount /proc error:", err)
+	}
+	if err := syscall.Unmount("/sys", 0); err != nil {
+		fmt.Println("unmount /sys error:", err)
+	}
 }
