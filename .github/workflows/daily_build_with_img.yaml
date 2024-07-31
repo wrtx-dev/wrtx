@@ -262,6 +262,7 @@ jobs:
           echo "Homepage: wrtx.dev" >>deb/DEBIAN/control
           echo "Description: run openwrt in simple namespace." >>deb/DEBIAN/control
           dpkg -b deb wrtx-$([[ $(uname -p) = 'x86_64' ]] && echo amd64)-$(cat VERSION).deb
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: artifact
         uses: actions/upload-artifact@v4
