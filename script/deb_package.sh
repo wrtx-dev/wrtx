@@ -46,6 +46,7 @@ copy_files() {
     cp -v ${cur_dir}/script/postrm ${wrtx_debian_dir}
     chmod 755 ${wrtx_debian_dir}/postrm
     cp -v ${wrtx_bin} ${wrtx_bin_dir}
+    cp -v ${cur_dir}/.config/conf.json ${wrtx_root}/conf/conf.json
 
 }
 
