@@ -24,6 +24,9 @@ var importCmd = cli.Command{
 
 func importAction(ctx *cli.Context) error {
 	conf := ctx.String("conf")
+	if conf == "" {
+		conf = config.DefaultConfPath
+	}
 	globalConfig := config.NewGlobalConf()
 	if err := globalConfig.Load(conf); err != nil {
 		return errors.WithMessagef(err, "load config file: %s error", conf)

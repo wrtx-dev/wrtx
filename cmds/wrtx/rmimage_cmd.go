@@ -54,10 +54,14 @@ func rmImage(c *cli.Context) error {
 		return nil
 	}
 	for _, rmImg := range willDels {
-		fmt.Printf("Removing image %s\n", rmImg)
+		if _, err := os.Stat(fmt.Sprintf("%s/%s", globalConfig.ImagePath, rmImg)); os.IsNotExist(err) {
+			fmt.Printf("Image %s not found, skip it\n", rmImg)
+			continue
+		}
 		if err := os.RemoveAll(fmt.Sprintf("%s/%s", globalConfig.ImagePath, rmImg)); err != nil {
 			fmt.Printf("failed to remove image %s: %v", rmImg, err)
 		}
+		fmt.Printf("Removed image %s\n", rmImg)
 	}
 	return nil
 }
