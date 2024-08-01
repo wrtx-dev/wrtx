@@ -86,3 +86,11 @@ func RemoveCgroupSubDirs(path string) {
 		}
 	}
 }
+
+func GetInstanceStatus(path string) (*Status, error) {
+	status := NewStatus()
+	if err := status.Load(path); err != nil {
+		return nil, err
+	}
+	return status, nil
+}

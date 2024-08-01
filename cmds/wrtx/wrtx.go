@@ -32,6 +32,8 @@ func main() {
 			&startCmd,
 			&agentCmd,
 			&rmImageCmd,
+			&lsiCmd,
+			&pscmd,
 		},
 	}
 	logrus.SetFormatter(&logrus.TextFormatter{})
