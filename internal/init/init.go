@@ -1,11 +1,12 @@
 package init
 
 import (
-	"fmt"
-	"wrtx/package/libinit"
-	_ "wrtx/package/nsenter"
 	"os"
 	"runtime"
+	"wrtx/package/libinit"
+	_ "wrtx/package/nsenter"
+
+	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -14,7 +15,7 @@ func init() {
 	}
 	runtime.GOMAXPROCS(1)
 	runtime.LockOSThread()
-	fmt.Println("start init...")
+	logrus.Debug("start init...")
 	libinit.Init()
 	os.Exit(0)
 }

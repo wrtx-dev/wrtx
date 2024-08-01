@@ -21,7 +21,7 @@ const (
 
 func GenRandMac() string {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return fmt.Sprintf("02:%02x:%02x:%0x:%02x:%02x", r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255))
+	return fmt.Sprintf("02:%02x:%02x:%02x:%02x:%02x", r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255), r.Intn(255))
 }
 func NewMacvlanDev(name, parent, hardwardAddr string) (netlink.Link, error) {
 	if _, err := netlink.LinkByName(name); err == nil {

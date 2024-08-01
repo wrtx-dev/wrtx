@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"wrtx/internal/config"
 
 	"github.com/urfave/cli/v2"
 )
@@ -24,8 +26,12 @@ func shellAction(ctx *cli.Context) error {
 	instanceName := ctx.Args().First()
 	gConf := ctx.String("conf")
 	args := []string{"exec"}
+	globalConfig, err := config.GetGlobalConfig(gConf)
+	if err != nil {
+		return fmt.Errorf("failed to get global config: %v", err)
+	}
 	if instanceName == "" {
-		instanceName = "openwrt"
+		instanceName = globalConfig.DefaultInstanceName
 	}
 	if gConf != "" {
 		args = append(args, "--conf", gConf)

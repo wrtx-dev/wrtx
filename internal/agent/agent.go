@@ -8,14 +8,20 @@ import (
 	"wrtx/internal/config"
 )
 
-func StartWrtxInstance(confFile string) error {
+func StartWrtxInstance(globalConf, confFile string) error {
 	_, err := LoadInstanceConfig(confFile)
 	if err != nil {
 		return err
 	}
+	args := []string{"wrtxd"}
+	if globalConf != "" {
+		args = append(args, "--conf", globalConf)
+	}
+	args = append(args, "agent", "--iconf", confFile)
+
 	cmd := exec.Cmd{
 		Path: "/proc/self/exe",
-		Args: []string{"wrtxd", "--conf", confFile, "agent"},
+		Args: args,
 		SysProcAttr: &syscall.SysProcAttr{
 			Setsid: true,
 		},

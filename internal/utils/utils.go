@@ -11,10 +11,6 @@ func GetInstancesConfig(globalPath, instanceName string) (*config.WrtxConfig, er
 	globalConfPath := globalPath
 	globalConfLoaded := false
 
-	if instanceName == "" {
-		instanceName = "openwrt"
-	}
-
 	if globalConfPath == "" {
 		globalConfPath = config.DefaultConfPath
 	}
@@ -28,6 +24,10 @@ func GetInstancesConfig(globalPath, instanceName string) (*config.WrtxConfig, er
 	}
 	if !globalConfLoaded {
 		return nil, fmt.Errorf("global config not found: %s", globalConfPath)
+	}
+
+	if instanceName == "" {
+		instanceName = globalConfig.DefaultInstanceName
 	}
 
 	conf := config.NewConf()

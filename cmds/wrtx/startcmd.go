@@ -36,8 +36,8 @@ func start(ctx *cli.Context) error {
 
 	name := ctx.Args().First()
 	if name == "" {
-		name = "openwrt"
+		name = globalConfig.DefaultInstanceName
 	}
-	return agent.StartWrtxInstance(fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
+	return agent.StartWrtxInstance(ctx.String("conf"),fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
 
 }

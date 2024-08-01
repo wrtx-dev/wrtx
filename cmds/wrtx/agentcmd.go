@@ -5,20 +5,40 @@ import (
 	"fmt"
 	"os"
 	"wrtx/internal/agent"
+	"wrtx/internal/config"
 	"wrtx/internal/instances"
 
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 var agentCmd = cli.Command{
-	Name:   "agent",
-	Usage:  "run the wrtx agent",
+	Name:  "agent",
+	Usage: "run the wrtx agent",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "iconf",
+
+			Usage: "path to instance configuration file",
+		},
+	},
 	Hidden: true,
 	Action: agentStart,
 }
 
 func agentStart(ctx *cli.Context) error {
-	confPath := ctx.String("conf")
+	confPath := ctx.String("iconf")
+	gconfPath := ctx.String("conf")
+
+	gconf, err := config.GetGlobalConfig(gconfPath)
+	if err != nil {
+		return err
+	}
+	fp, err := os.OpenFile(gconf.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		fmt.Println("Failed to open log file:", err)
+	}
 
 	conf, err := agent.LoadInstanceConfig(confPath)
 	if err != nil {
@@ -43,5 +63,6 @@ func agentStart(ctx *cli.Context) error {
 			os.RemoveAll(conf.StatusFile)
 		}
 	}
+	logrus.SetOutput(fp)
 	return instances.StartInstance(conf)
 }

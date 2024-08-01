@@ -5,6 +5,7 @@ import (
 	"os"
 	"syscall"
 	"time"
+	"wrtx/internal/config"
 	_ "wrtx/internal/terminate"
 	"wrtx/internal/utils"
 
@@ -21,10 +22,15 @@ var stopCmd = cli.Command{
 func stopWrt(ctx *cli.Context) error {
 	globalConfPath := ctx.String("conf")
 	instanceName := ctx.Args().First()
-	if instanceName == "" {
-		instanceName = "openwrt"
+
+	globalConf, err := config.GetGlobalConfig(globalConfPath)
+	if err != nil {
+		return fmt.Errorf("get global config error: %v", err)
 	}
 
+	if instanceName == "" {
+		instanceName = globalConf.DefaultInstanceName
+	}
 	conf, err := utils.GetInstancesConfig(globalConfPath, instanceName)
 	if err != nil {
 		return fmt.Errorf("get instance config error: %v", err)

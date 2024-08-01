@@ -37,7 +37,7 @@ func importAction(ctx *cli.Context) error {
 	imagePath := ctx.Args().First()
 	name := ctx.String("name")
 	if name == "" {
-		name = "openwrt"
+		name = globalConfig.DefaultImageName
 	}
 	if stat, err := os.Stat(imagePath); err == nil {
 		if stat.IsDir() {

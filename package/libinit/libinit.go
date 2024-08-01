@@ -43,7 +43,7 @@ func Init() {
 		fmt.Println("find path err:", err)
 		os.Exit(-1)
 	}
-	fmt.Println("start run /sbin/init")
+	// fmt.Println("start run /sbin/init")
 	err = syscall.Exec(path, nil, nil)
 	if err != nil {
 		fmt.Println("run err:", err)

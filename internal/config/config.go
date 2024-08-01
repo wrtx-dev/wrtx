@@ -18,13 +18,15 @@ const (
 	DefaultImageName      = "openwrt"
 	DefaultRunDir         = baseWrtxPath + "/run"
 	DefaultWrtxRunPidFile = DefaultRunDir + "/pid"
+	DefaultLogPath        = baseWrtxPath + "/log/wrtx.log"
 )
 
 type GlobalConfig struct {
 	InstancesPath       string `json:"instances_path"`
-	ImageName           string `json:"default_image_name"`
+	DefaultImageName    string `json:"default_image_name"`
 	ImagePath           string `json:"default_image_path"`
 	DefaultInstanceName string `json:"default_instance_name"`
+	LogPath             string `json:"log_path"`
 }
 type WrtxConfig struct {
 	InstanceName  string            `json:"instance_name"`
@@ -83,9 +85,10 @@ func NewGlobalConf() *GlobalConfig {
 func DefaultGlobalConf() *GlobalConfig {
 	return &GlobalConfig{
 		InstancesPath:       DefaultInstancePath,
-		ImageName:           DefaultImageName,
+		DefaultImageName:    DefaultImageName,
 		ImagePath:           DefaultImagePath,
 		DefaultInstanceName: "openwrt",
+		LogPath:             DefaultLogPath,
 	}
 }
 
@@ -116,4 +119,21 @@ func (wc *WrtxConfig) Load(dst string) error {
 
 func NewConf() *WrtxConfig {
 	return &WrtxConfig{}
+}
+
+func GetGlobalConfig(globalPath string) (*GlobalConfig, error) {
+	if globalPath == "" {
+		globalPath = DefaultConfPath
+		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
+			gConf := DefaultGlobalConf()
+			if err := gConf.Dumps(globalPath); err != nil {
+				return nil, fmt.Errorf("save global config error: %v", err)
+			}
+		}
+	}
+	globalConf := NewGlobalConf()
+	if err := globalConf.Load(globalPath); err != nil {
+		return nil, fmt.Errorf("load global config error: %v", err)
+	}
+	return globalConf, nil
 }

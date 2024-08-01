@@ -97,9 +97,7 @@ func runWrt(ctx *cli.Context) error {
 	}
 
 	name := ctx.Args().First()
-	if name == "" {
-		name = "openwrt"
-	}
+
 	if globalConfPath == "" {
 		globalConfPath = config.DefaultConfPath
 	}
@@ -115,6 +113,9 @@ func runWrt(ctx *cli.Context) error {
 		globalConfig = config.DefaultGlobalConf()
 	}
 	globalConfig.Dumps(globalConfPath)
+	if name == "" {
+		name = globalConfig.DefaultInstanceName
+	}
 	instancePath := fmt.Sprintf("%s/%s", globalConfig.InstancesPath, name)
 	if _, err := os.Stat(instancePath); err != nil {
 		if !os.IsNotExist(err) {
@@ -245,7 +246,7 @@ func runWrt(ctx *cli.Context) error {
 	if err := conf.Dumps(confPath); err != nil {
 		return fmt.Errorf("create new instance error: %v", err)
 	}
-	return agent.StartWrtxInstance(confPath)
+	return agent.StartWrtxInstance(globalConfPath, confPath)
 	// return nil
 }
 
