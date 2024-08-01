@@ -22,7 +22,7 @@ then
     version=${1}
 fi
 
-wrtx_dirs=("bin" "conf" "images" "run" "instances")
+wrtx_dirs=("bin" "conf" "images" "run" "instances" "log")
 
 mk_deb_dir() {
     test -d ${wrtx_base_dir} && rm -rvf ${wrtx_base_dir}

@@ -2,5 +2,6 @@
     "instances_path": "/usr/local/wrtx/instances",
     "default_image_name": "openwrt",
     "default_image_path": "/usr/local/wrtx/images",
-    "default_instance_name": "openwrt"
+    "default_instance_name": "openwrt",
+    "log_path": "/usr/local/wrtx/log/wrtx.log"
 }
