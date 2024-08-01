@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
@@ -162,15 +163,6 @@ func runWrt(ctx *cli.Context) error {
 		}
 	}
 
-	if mem != "" {
-		var err error
-		if memory, err = strconv.Atoi(mem); err != nil {
-			return fmt.Errorf("parse mem error: %v", err)
-		}
-		if memory < 0 {
-			return fmt.Errorf("invail mem: %d", memory)
-		}
-	}
 	if imgName == "" {
 		imgName = config.DefaultImageName
 	}
@@ -221,7 +213,7 @@ func runWrt(ctx *cli.Context) error {
 			return fmt.Errorf("open network file error: %v", err)
 		}
 		defer fp.Close()
-		netconfs := netconf.NewWrtxNetConfig(netDevName, "192.168.64.6", "255.255.255.0", "192.168.64.1", "8.8.8.8")
+		netconfs := netconf.NewWrtxNetConfig(netDevName, ip, mask, gateway, dns)
 
 		if err := netconf.GenerateNetConfig(netconfs, fp); err != nil {
 			fmt.Printf("config network err:\n%v\n\n\n", err)
@@ -264,6 +256,9 @@ func checkNetConfig(ip, mask, gateway, dns string) (bool, error) {
 		for i, conf := range netconfs {
 			if conf == "" {
 				return false, fmt.Errorf("config network error: %s is empty", idx[i])
+			}
+			if net.ParseIP(conf) == nil {
+				return false, fmt.Errorf("config network error: %s is invaild", idx[i])
 			}
 		}
 	}

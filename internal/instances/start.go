@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -29,6 +30,8 @@ type pidMsg struct {
 	ChildPID      int `json:"childpid"`
 	GrandChildPid int `json:"grandchildpid"`
 }
+
+var mutex = &sync.Mutex{}
 
 func StartInstance(conf *config.WrtxConfig) error {
 
@@ -55,8 +58,10 @@ func wrtxdLoop(conf *config.WrtxConfig, status *Status) error {
 	exitProc := false
 	go func() {
 		<-sig
+		mutex.Lock()
 		needRestart = false
 		_ = terminate.TerminateCmd(status.PID)
+		mutex.Unlock()
 		exitProc = true
 
 	}()
@@ -78,7 +83,11 @@ func wrtxdLoop(conf *config.WrtxConfig, status *Status) error {
 			}
 		}
 		releaseNameSpaces(conf)
-		if !needRestart || exitProc {
+		mutex.Lock()
+		continued := needRestart && !exitProc
+		mutex.Unlock()
+
+		if !continued {
 			if conf.ResLimit {
 				RemoveCgroupSubDirs(status.CgroupPath)
 			}

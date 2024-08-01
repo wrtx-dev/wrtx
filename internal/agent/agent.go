@@ -9,15 +9,15 @@ import (
 )
 
 func StartWrtxInstance(globalConf, confFile string) error {
-	_, err := LoadInstanceConfig(confFile)
+	conf, err := LoadInstanceConfig(confFile)
 	if err != nil {
 		return err
 	}
-	args := []string{"wrtxd"}
+	args := []string{fmt.Sprintf("wrtxd: instance %s's", conf.InstanceName)}
 	if globalConf != "" {
 		args = append(args, "--conf", globalConf)
 	}
-	args = append(args, "agent", "--iconf", confFile)
+	args = append(args, "agent")
 
 	cmd := exec.Cmd{
 		Path: "/proc/self/exe",
@@ -25,6 +25,7 @@ func StartWrtxInstance(globalConf, confFile string) error {
 		SysProcAttr: &syscall.SysProcAttr{
 			Setsid: true,
 		},
+		Env: []string{fmt.Sprintf("WRTX_ICONF=%s", confFile)},
 		// Stdout: os.Stdout,
 		// Stderr: os.Stderr,
 	}

@@ -17,6 +17,7 @@ var agentCmd = cli.Command{
 	Usage: "run the wrtx agent",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:    "iconf",
 			EnvVars: []string{"WRTX_ICONF"},
 			Usage:   "path to instance configuration file",
 		},
@@ -39,8 +40,11 @@ func agentStart(ctx *cli.Context) error {
 		fmt.Println("Failed to open log file:", err)
 	}
 
+	logrus.SetOutput(fp)
+
 	conf, err := agent.LoadInstanceConfig(confPath)
 	if err != nil {
+		logrus.Errorf("Failed to load instance configuration from %s err %v", confPath, err)
 		return err
 	}
 	if _, err := os.Stat(conf.StatusFile); err == nil {
@@ -62,6 +66,6 @@ func agentStart(ctx *cli.Context) error {
 			os.RemoveAll(conf.StatusFile)
 		}
 	}
-	logrus.SetOutput(fp)
+
 	return instances.StartInstance(conf)
 }
