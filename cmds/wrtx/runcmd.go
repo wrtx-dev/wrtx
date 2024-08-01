@@ -75,7 +75,6 @@ var runcmd = cli.Command{
 
 func runWrt(ctx *cli.Context) error {
 	globalConfPath := ctx.String("conf")
-	globalConfLoaded := false
 	imgName := ctx.String("image")
 	nictype := ctx.String("vtype")
 	cpuCores := ctx.String("cpus")
@@ -101,21 +100,11 @@ func runWrt(ctx *cli.Context) error {
 	if globalConfPath == "" {
 		globalConfPath = config.DefaultConfPath
 	}
-	globalConfig := config.NewGlobalConf()
-	if err := globalConfig.Load(globalConfPath); err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("load global config error: %v", err)
-		}
-	} else {
-		globalConfLoaded = true
+	globalConfig, err := config.GetGlobalConfig(globalConfPath)
+	if err != nil {
+		return fmt.Errorf("load global config error: %v", err)
 	}
-	if !globalConfLoaded {
-		globalConfig = config.DefaultGlobalConf()
-	}
-	globalConfig.Dumps(globalConfPath)
-	if name == "" {
-		name = globalConfig.DefaultInstanceName
-	}
+
 	instancePath := fmt.Sprintf("%s/%s", globalConfig.InstancesPath, name)
 	if _, err := os.Stat(instancePath); err != nil {
 		if !os.IsNotExist(err) {

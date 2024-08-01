@@ -69,8 +69,8 @@ func wrtxdLoop(conf *config.WrtxConfig, status *Status) error {
 			status.Dump(conf.StatusFile)
 		}
 		var stat syscall.WaitStatus
+		logrus.Info("wrtxD wait child:", status.PID, " exit")
 		for {
-			logrus.Info("wrtxD wait child:", status.PID, "exit")
 			syscall.Wait4(status.PID, &stat, 0, nil)
 			if stat.Exited() {
 				logrus.Infof("child pid:%d exit, status:%d\n", status.PID, stat.ExitStatus())

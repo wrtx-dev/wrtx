@@ -18,7 +18,8 @@ const (
 	DefaultImageName      = "openwrt"
 	DefaultRunDir         = baseWrtxPath + "/run"
 	DefaultWrtxRunPidFile = DefaultRunDir + "/pid"
-	DefaultLogPath        = baseWrtxPath + "/log/wrtx.log"
+	DefalutLogDir         = baseWrtxPath + "/log"
+	DefaultLogPath        = DefalutLogDir + "/wrtx.log"
 )
 
 type GlobalConfig struct {
@@ -126,6 +127,9 @@ func GetGlobalConfig(globalPath string) (*GlobalConfig, error) {
 		globalPath = DefaultConfPath
 		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
 			gConf := DefaultGlobalConf()
+			if err := createDefaultDirs(); err != nil {
+				return nil, fmt.Errorf("create default dirs error: %v", err)
+			}
 			if err := gConf.Dumps(globalPath); err != nil {
 				return nil, fmt.Errorf("save global config error: %v", err)
 			}
@@ -136,4 +140,16 @@ func GetGlobalConfig(globalPath string) (*GlobalConfig, error) {
 		return nil, fmt.Errorf("load global config error: %v", err)
 	}
 	return globalConf, nil
+}
+
+func createDefaultDirs() error {
+	paths := []string{DefaultImagePath, DefaultInstancePath, DefaultRunDir, DefalutLogDir}
+	for _, path := range paths {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			if err := os.MkdirAll(path, os.ModePerm); err != nil {
+				return fmt.Errorf("create dir %s error: %v", path, err)
+			}
+		}
+	}
+	return nil
 }

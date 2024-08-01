@@ -17,9 +17,8 @@ var agentCmd = cli.Command{
 	Usage: "run the wrtx agent",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "iconf",
-
-			Usage: "path to instance configuration file",
+			EnvVars: []string{"WRTX_ICONF"},
+			Usage:   "path to instance configuration file",
 		},
 	},
 	Hidden: true,

@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"wrtx/internal/agent"
 	"wrtx/internal/config"
 
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -18,26 +18,15 @@ var startCmd = cli.Command{
 
 func start(ctx *cli.Context) error {
 	globalConfPath := ctx.String("conf")
-	globalConfLoaded := false
-	if globalConfPath == "" {
-		globalConfPath = config.DefaultConfPath
-	}
-	globalConfig := config.NewGlobalConf()
-	if err := globalConfig.Load(globalConfPath); err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("load global config error: %v", err)
-		}
-	} else {
-		globalConfLoaded = true
-	}
-	if !globalConfLoaded {
-		globalConfig = config.DefaultGlobalConf()
+	globalConfig, err := config.GetGlobalConfig(globalConfPath)
+	if err != nil {
+		return errors.WithMessage(err, "failed to load global config")
 	}
 
 	name := ctx.Args().First()
 	if name == "" {
 		name = globalConfig.DefaultInstanceName
 	}
-	return agent.StartWrtxInstance(ctx.String("conf"),fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
+	return agent.StartWrtxInstance(ctx.String("conf"), fmt.Sprintf("%s/%s/config.json", globalConfig.InstancesPath, name))
 
 }

@@ -27,9 +27,9 @@ func importAction(ctx *cli.Context) error {
 	if conf == "" {
 		conf = config.DefaultConfPath
 	}
-	globalConfig := config.NewGlobalConf()
-	if err := globalConfig.Load(conf); err != nil {
-		return errors.WithMessagef(err, "load config file: %s error", conf)
+	globalConfig, err := config.GetGlobalConfig(conf)
+	if err != nil {
+		return err
 	}
 	if globalConfig.ImagePath == "" {
 		globalConfig.ImagePath = config.DefaultImagePath

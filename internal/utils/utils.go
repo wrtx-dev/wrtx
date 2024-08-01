@@ -2,28 +2,19 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"wrtx/internal/config"
 	"wrtx/internal/instances"
 )
 
 func GetInstancesConfig(globalPath, instanceName string) (*config.WrtxConfig, error) {
 	globalConfPath := globalPath
-	globalConfLoaded := false
 
 	if globalConfPath == "" {
 		globalConfPath = config.DefaultConfPath
 	}
-	globalConfig := config.NewGlobalConf()
-	if err := globalConfig.Load(globalConfPath); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("load global config error: %v", err)
-		}
-	} else {
-		globalConfLoaded = true
-	}
-	if !globalConfLoaded {
-		return nil, fmt.Errorf("global config not found: %s", globalConfPath)
+	globalConfig, err := config.GetGlobalConfig(globalConfPath)
+	if err != nil {
+		return nil, fmt.Errorf("load global config error: %v", err)
 	}
 
 	if instanceName == "" {

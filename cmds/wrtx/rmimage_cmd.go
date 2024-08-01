@@ -23,12 +23,9 @@ func rmImage(c *cli.Context) error {
 		return fmt.Errorf("missing image name")
 	}
 	conf := c.String("conf")
-	globalConfig := config.NewGlobalConf()
-	if conf == "" {
-		conf = config.DefaultConfPath
-	}
-	if err := globalConfig.Load(conf); err != nil {
-		return fmt.Errorf("failed to load global config: %v", err)
+	globalConfig, err := config.GetGlobalConfig(conf)
+	if err != nil {
+		return fmt.Errorf("failed to get global config: %v", err)
 	}
 	usingImages, err := instances.GetAllImageInUsed(conf)
 	if err != nil {
