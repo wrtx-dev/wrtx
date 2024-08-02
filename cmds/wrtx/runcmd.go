@@ -98,12 +98,13 @@ func runWrt(ctx *cli.Context) error {
 
 	name := ctx.Args().First()
 
-	if globalConfPath == "" {
-		globalConfPath = config.DefaultConfPath
-	}
 	globalConfig, err := config.GetGlobalConfig(globalConfPath)
 	if err != nil {
 		return fmt.Errorf("load global config error: %v", err)
+	}
+
+	if name == "" {
+		name = globalConfig.DefaultInstanceName
 	}
 
 	instancePath := fmt.Sprintf("%s/%s", globalConfig.InstancesPath, name)
@@ -164,7 +165,7 @@ func runWrt(ctx *cli.Context) error {
 	}
 
 	if imgName == "" {
-		imgName = config.DefaultImageName
+		imgName = globalConfig.DefaultImageName
 	}
 
 	existed, err := instances.CheckImages(globalConfig, imgName)
