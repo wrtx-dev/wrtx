@@ -29,6 +29,10 @@ enum sync_t
 #define STAGE_2 1
 #define STAGE_3 2
 
+#ifndef CLONE_NEWTIME
+#define CLONE_NEWTIME 0
+#endif
+
 struct clone_t
 {
     char stack[4096] __attribute__((aligned(16)));
