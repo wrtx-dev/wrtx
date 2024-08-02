@@ -216,7 +216,7 @@ void nsexec()
         break;
     case STAGE_2:
         DEBUG("pid: %d get 1\n", getpid());
-        try_unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWCGROUP, "unshare");
+        try_unshare(CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWCGROUP | CLONE_NEWTIME, "unshare");
         pid_t stage3_pid = clone_parent(&env, STAGE_3);
         if (stage3_pid < 0)
         {

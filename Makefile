@@ -2,7 +2,7 @@ all: wrtx
 
 version=$(shell cat VERSION)
 
-PACKAGES=$(shell find package -type f -name '*.go')
+PACKAGES=$(shell find package -type f)
 INTERNAL_PACKAGES=$(shell find internal -type f -name '*.go')
 CMDS=$(shell find cmds -type f -name '*.go')
 

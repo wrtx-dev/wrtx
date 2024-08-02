@@ -215,7 +215,7 @@ func runWrt(ctx *cli.Context) error {
 		defer fp.Close()
 		netconfs := netconf.NewWrtxNetConfig(netDevName, ip, mask, gateway, dns)
 
-		if err := netconf.GenerateNetConfig(netconfs, fp); err != nil {
+		if err := netconf.GenerateNetConfig(netconfs, nictype == "macvlan", fp); err != nil {
 			fmt.Printf("config network err:\n%v\n\n\n", err)
 			return fmt.Errorf("config network error: %v", err)
 		}
