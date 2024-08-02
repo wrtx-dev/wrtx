@@ -34,6 +34,7 @@ func main() {
 			&rmImageCmd,
 			&lsiCmd,
 			&pscmd,
+			&rmCmd,
 		},
 	}
 	logrus.SetFormatter(&logrus.TextFormatter{})
