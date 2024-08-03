@@ -69,7 +69,7 @@ jobs:
         id: build
         run: |
           cd openwrt
-          make -j$(($(nproc) *2))
+          make -j$(($(nproc) *2)) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
 
       - name: pick files
