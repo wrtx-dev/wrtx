@@ -36,7 +36,7 @@ jobs:
           cd openwrt
           git init
           git remote add origin https://git.openwrt.org/openwrt/openwrt.git
-          git fetch origin master
+          git fetch origin v23.05.3
           git reset --hard FETCH_HEAD
           echo "status=success" >> $GITHUB_OUTPUT
 
