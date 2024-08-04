@@ -36,7 +36,7 @@ func shellAction(ctx *cli.Context) error {
 	if gConf != "" {
 		args = append(args, "--conf", gConf)
 	}
-	args = append(args, []string{instanceName, "/bin/ash", "--login"}...)
+	args = append(args, []string{"-i",instanceName, "/bin/ash", "--login"}...)
 
 	cmd := exec.Command("/proc/self/exe", args...)
 	cmd.Stderr = os.Stderr

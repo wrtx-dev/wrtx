@@ -19,9 +19,9 @@ var execCmd = cli.Command{
 	Usage:     "execute a command in instance",
 	ArgsUsage: " instance-name command [args...]",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "name",
-			Usage: "instance name",
+		&cli.BoolFlag{
+			Name:  "i",
+			Usage: "run command interactive with stdio",
 		},
 	},
 	Action: execAction,
@@ -37,6 +37,7 @@ func init() {
 func execAction(ctx *cli.Context) error {
 	args := ctx.Args().Slice()
 	// fmt.Println("args:", args)
+	interActive := ctx.Bool("i")
 	if len(args) < 2 {
 		return fmt.Errorf("command is required")
 	}
@@ -55,18 +56,24 @@ func execAction(ctx *cli.Context) error {
 		defer fp.Close()
 
 		cmd := exec.Command("/proc/self/exe", os.Args[1:]...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
+		if interActive {
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+			cmd.Stdin = os.Stdin
+		}
 		cmd.ExtraFiles = append(cmd.ExtraFiles, fp)
 		cmd.Env = []string{fmt.Sprintf("NSPID=%d", pid)}
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: !interActive,
+		}
 		cmd.Env = append(cmd.Env, fmt.Sprintf("NSLIST=%d", syscall.CLONE_NEWIPC|syscall.CLONE_NEWNET|syscall.CLONE_NEWNS|syscall.CLONE_NEWPID|syscall.CLONE_NEWUTS|syscall.CLONE_NEWCGROUP))
 
 		if err := cmd.Start(); err != nil {
 			return fmt.Errorf("start new exec process error: %v", err)
 		}
-
-		cmd.Wait()
+		if interActive {
+			cmd.Wait()
+		}
 	} else {
 		var cmd *exec.Cmd
 		envFile := os.NewFile(uintptr(3), "environ")
